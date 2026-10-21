@@ -93,6 +93,11 @@ deploy:production:
     - >
       ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "root@${VPS_HOST}"
       "cd ${VPS_DEPLOY_PATH} && docker compose build web && docker compose up -d && docker ps --filter name=english-vocab-app --format '{{.Status}}'"
+    # Warm-up: pre-load route + curriculum cache để user đầu tiên
+    # không chịu cold start (~3-4s sau mỗi lần restart container)
+    - sleep 3
+    - curl -s -o /dev/null --max-time 30 https://english.sanbong.cloud/ || true
+    - curl -s -o /dev/null --max-time 30 https://english.sanbong.cloud/grammar || true
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       when: manual

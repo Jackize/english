@@ -1,0 +1,15 @@
+# Không đưa vào build context
+node_modules
+.next
+.git
+.env
+.env.*
+*.db
+.DS_Store
+mockups
+.gitlab-ci.yml
+Dockerfile
+README.md
+AGENTS.md
+CLAUDE.md
+tsconfig.tsbuildinfo

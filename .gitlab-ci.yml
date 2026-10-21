@@ -84,6 +84,11 @@ deploy:production:
       --exclude .env --exclude "*.db" --exclude .DS_Store --exclude mockups
       -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no"
       ./ "root@${VPS_HOST}:${VPS_DEPLOY_PATH}/repo/"
+    # Cập nhật secret DATABASE_URL cho BuildKit (dùng khi docker build)
+    - >
+      echo -n "$DATABASE_URL" | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no
+      "root@${VPS_HOST}"
+      "cat > ${VPS_DEPLOY_PATH}/secrets/database_url && chmod 600 ${VPS_DEPLOY_PATH}/secrets/database_url"
     # Build image mới + restart container
     - >
       ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "root@${VPS_HOST}"

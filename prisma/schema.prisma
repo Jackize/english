@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id            String             @id @default(cuid())
+  email         String             @unique
+  passwordHash  String?
+  name          String?
+  dailyGoal     Int                @default(10)
+  streak        Int                @default(0)
+  lastStudyDate DateTime?
+  createdAt     DateTime           @default(now())
+  wordProgress  UserWordProgress[]
+  studySessions StudySession[]
+}
+
+model DocumentSet {
+  id         String     @id @default(cuid())
+  name       String
+  sourceUrl  String?    @unique
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  categories Category[]
+}
+
+model Category {
+  id            String      @id @default(cuid())
+  name          String
+  slug          String
+  documentSetId String
+  order         Int         @default(0)
+  documentSet   DocumentSet @relation(fields: [documentSetId], references: [id], onDelete: Cascade)
+  words         Word[]
+
+  @@unique([documentSetId, slug])
+}
+
+model Word {
+  id           String             @id @default(cuid())
+  word         String
+  ipa          String?
+  wordForm     String?
+  meaningEn    String
+  meaningVi    String
+  example      String?
+  relatedForms String?
+  archived     Boolean            @default(false)
+  categoryId   String
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  category     Category           @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  progress     UserWordProgress[]
+
+  @@index([categoryId])
+  @@index([word])
+}
+
+model UserWordProgress {
+  id           String    @id @default(cuid())
+  userId       String
+  wordId       String
+  status       String    @default("new")
+  easeFactor   Float     @default(2.5)
+  interval     Int       @default(0)
+  nextReviewAt DateTime?
+  reviewCount  Int       @default(0)
+  lastResult   String?
+  lastReviewed DateTime?
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  word         Word      @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, wordId])
+  @@index([userId, nextReviewAt])
+}
+
+model StudySession {
+  id        String   @id @default(cuid())
+  userId    String
+  wordsDone Int      @default(0)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model ImportLog {
+  id        String   @id @default(cuid())
+  sourceUrl String
+  wordCount Int      @default(0)
+  status    String
+  message   String?
+  createdAt DateTime @default(now())
+}

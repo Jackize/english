@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Login - eng-growth</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline-variant": "#bfc9bd",
+                        "on-tertiary-fixed-variant": "#3e4943",
+                        "on-surface-variant": "#404940",
+                        "on-tertiary-container": "#c5d2ca",
+                        "secondary": "#006d3e",
+                        "inverse-on-surface": "#ebf1ff",
+                        "surface-container-high": "#dee9fd",
+                        "surface-variant": "#d9e3f7",
+                        "inverse-surface": "#273140",
+                        "surface-dim": "#d0daef",
+                        "background": "#f9f9ff",
+                        "on-tertiary-fixed": "#131e19",
+                        "on-background": "#121c2a",
+                        "on-secondary": "#ffffff",
+                        "on-secondary-container": "#007241",
+                        "on-tertiary": "#ffffff",
+                        "inverse-primary": "#8bd79b",
+                        "on-error-container": "#93000a",
+                        "surface-container": "#e6eeff",
+                        "primary-container": "#166534",
+                        "secondary-container": "#8cf5b2",
+                        "surface": "#f9f9ff",
+                        "on-primary-fixed": "#00210b",
+                        "primary-fixed": "#a6f4b5",
+                        "tertiary-container": "#4f5b54",
+                        "tertiary-fixed-dim": "#bdcac1",
+                        "surface-tint": "#1f6c3a",
+                        "secondary-fixed-dim": "#73db9a",
+                        "on-surface": "#121c2a",
+                        "surface-bright": "#f9f9ff",
+                        "surface-container-low": "#eff3ff",
+                        "primary": "#004c22",
+                        "on-primary-fixed-variant": "#005226",
+                        "tertiary-fixed": "#d9e6dd",
+                        "secondary-fixed": "#8ff8b4",
+                        "on-primary": "#ffffff",
+                        "on-primary-container": "#93e0a2",
+                        "error-container": "#ffdad6",
+                        "outline": "#707a6f",
+                        "on-error": "#ffffff",
+                        "tertiary": "#38443d",
+                        "on-secondary-fixed": "#00210f",
+                        "surface-container-lowest": "#ffffff",
+                        "error": "#ba1a1a",
+                        "surface-container-highest": "#d9e3f7",
+                        "primary-fixed-dim": "#8bd79b",
+                        "on-secondary-fixed-variant": "#00522d"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xs": "4px",
+                        "md": "24px",
+                        "gutter": "24px",
+                        "xl": "80px",
+                        "lg": "48px",
+                        "base": "8px",
+                        "container-max": "1100px",
+                        "sm": "12px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "label-md": ["Inter"],
+                        "display": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "headline-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "600"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "display": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .elevation-1 { box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.04); }
+        .elevation-2 { box-shadow: 0px 8px 30px rgba(0, 0, 0, 0.08); }
+    </style>
+</head>
+<body class="bg-background min-h-screen flex flex-col font-body-md text-on-background">
+<!-- TopNavBar Suppressed: Page intent is Linear/Transactional (Login) -->
+<!-- Main Content Canvas -->
+<main class="flex-grow flex items-center justify-center p-4 md:p-gutter w-full max-w-container-max mx-auto">
+<div class="w-full max-w-md bg-surface-container-lowest rounded-xl elevation-1 border border-outline-variant p-6 md:p-lg">
+<div class="text-center mb-8">
+<h1 class="font-headline-lg text-headline-lg text-primary mb-2">eng-growth</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Welcome back. Please sign in to continue your learning journey.</p>
+</div>
+<form class="space-y-6">
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2" for="email">Email Address</label>
+<input class="w-full px-4 py-3 rounded-lg border-[1.5px] border-outline-variant bg-surface-container-lowest text-on-background placeholder-outline-variant focus:border-secondary-container focus:ring-2 focus:ring-secondary-container/20 transition-all outline-none font-body-md text-body-md" id="email" name="email" placeholder="Enter your email" type="email"/>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2" for="password">Password</label>
+<input class="w-full px-4 py-3 rounded-lg border-[1.5px] border-outline-variant bg-surface-container-lowest text-on-background placeholder-outline-variant focus:border-secondary-container focus:ring-2 focus:ring-secondary-container/20 transition-all outline-none font-body-md text-body-md" id="password" name="password" placeholder="Enter your password" type="password"/>
+<div class="mt-2 text-right">
+<a class="font-label-sm text-label-sm text-primary hover:text-secondary-container transition-colors" href="#">Forgot password?</a>
+</div>
+</div>
+<div class="pt-4">
+<button class="w-full bg-[#86EFAC] text-[#166534] font-label-md text-label-md py-3 px-6 rounded-lg hover:bg-secondary-fixed transition-colors duration-200 elevation-1 active:elevation-2 flex items-center justify-center gap-2" type="submit">
+                        Sign In
+                        <span class="material-symbols-outlined text-[20px]" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</form>
+<div class="mt-8 text-center border-t border-outline-variant pt-6">
+<p class="font-body-md text-body-md text-on-surface-variant">
+                    Don't have an account? 
+                    <a class="font-label-md text-label-md text-primary hover:text-secondary-container transition-colors" href="#">Create one</a>
+</p>
+</div>
+</div>
+</main>
+<!-- Footer Suppressed on Transactional Screens to maintain focus -->
+</body></html>

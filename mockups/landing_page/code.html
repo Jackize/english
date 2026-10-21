@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>LexiGrow - Master English Vocabulary</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline-variant": "#bfc9bd",
+                        "on-tertiary-fixed-variant": "#3e4943",
+                        "on-surface-variant": "#404940",
+                        "on-tertiary-container": "#c5d2ca",
+                        "secondary": "#006d3e",
+                        "inverse-on-surface": "#ebf1ff",
+                        "surface-container-high": "#dee9fd",
+                        "surface-variant": "#d9e3f7",
+                        "inverse-surface": "#273140",
+                        "surface-dim": "#d0daef",
+                        "background": "#f9f9ff",
+                        "on-tertiary-fixed": "#131e19",
+                        "on-background": "#121c2a",
+                        "on-secondary": "#ffffff",
+                        "on-secondary-container": "#007241",
+                        "on-tertiary": "#ffffff",
+                        "inverse-primary": "#8bd79b",
+                        "on-error-container": "#93000a",
+                        "surface-container": "#e6eeff",
+                        "primary-container": "#166534",
+                        "secondary-container": "#8cf5b2",
+                        "surface": "#f9f9ff",
+                        "on-primary-fixed": "#00210b",
+                        "primary-fixed": "#a6f4b5",
+                        "tertiary-container": "#4f5b54",
+                        "tertiary-fixed-dim": "#bdcac1",
+                        "surface-tint": "#1f6c3a",
+                        "secondary-fixed-dim": "#73db9a",
+                        "on-surface": "#121c2a",
+                        "surface-bright": "#f9f9ff",
+                        "surface-container-low": "#eff3ff",
+                        "primary": "#004c22",
+                        "on-primary-fixed-variant": "#005226",
+                        "tertiary-fixed": "#d9e6dd",
+                        "secondary-fixed": "#8ff8b4",
+                        "on-primary": "#ffffff",
+                        "on-primary-container": "#93e0a2",
+                        "error-container": "#ffdad6",
+                        "outline": "#707a6f",
+                        "on-error": "#ffffff",
+                        "tertiary": "#38443d",
+                        "on-secondary-fixed": "#00210f",
+                        "surface-container-lowest": "#ffffff",
+                        "error": "#ba1a1a",
+                        "surface-container-highest": "#d9e3f7",
+                        "primary-fixed-dim": "#8bd79b",
+                        "on-secondary-fixed-variant": "#00522d"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xs": "4px",
+                        "md": "24px",
+                        "gutter": "24px",
+                        "xl": "80px",
+                        "lg": "48px",
+                        "base": "8px",
+                        "container-max": "1100px",
+                        "sm": "12px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "label-md": ["Inter"],
+                        "display": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "headline-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "600"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "display": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-surface-container-lowest text-on-surface font-body-md antialiased min-h-screen flex flex-col">
+<!-- TopNavBar -->
+<header class="bg-surface dark:bg-surface w-full z-50 sticky top-0">
+<div class="flex justify-between items-center px-gutter py-4 max-w-container-max mx-auto w-full">
+<div class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim">
+                LexiGrow
+            </div>
+<nav class="hidden md:flex gap-6 items-center font-body-md text-body-md">
+<a class="text-primary dark:text-primary-fixed-dim border-b-2 border-primary font-bold pb-1 cursor-pointer active:opacity-80" href="#">Home</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant font-medium hover:text-primary dark:hover:text-primary-fixed-dim transition-colors duration-200 cursor-pointer active:opacity-80" href="#">Learn</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant font-medium hover:text-primary dark:hover:text-primary-fixed-dim transition-colors duration-200 cursor-pointer active:opacity-80" href="#">Admin</a>
+</nav>
+<div class="flex items-center gap-4 text-primary dark:text-primary-fixed-dim">
+<button aria-label="Account" class="hover:text-primary-container transition-colors duration-200">
+<span class="material-symbols-outlined text-[24px]">account_circle</span>
+</button>
+<button aria-label="Settings" class="hover:text-primary-container transition-colors duration-200">
+<span class="material-symbols-outlined text-[24px]">settings</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow flex flex-col items-center justify-center px-gutter py-xl">
+<!-- Hero Section -->
+<section class="max-w-[800px] w-full text-center flex flex-col items-center gap-md">
+<div class="bg-surface-container-low text-primary px-4 py-2 rounded-full font-label-sm text-label-sm mb-4 inline-flex items-center gap-2 border border-outline-variant/30">
+<span class="w-2 h-2 rounded-full bg-secondary-fixed"></span>
+                Welcome to Refined Learning
+            </div>
+<h1 class="font-display text-display text-on-surface mb-2">
+                Master English Vocabulary Naturally
+            </h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-[600px] mb-lg">
+                The simplest way to expand your lexicon through distraction-free learning. Build lasting retention with cognitive ease.
+            </p>
+<div class="flex gap-4 items-center">
+<button class="bg-[#86EFAC] text-[#166534] font-label-md text-label-md px-8 py-4 rounded-full shadow-[0px_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0px_8px_30px_rgba(0,0,0,0.08)] transition-all duration-300 flex items-center gap-2 group">
+                    Get Started
+                    <span class="material-symbols-outlined group-hover:translate-x-1 transition-transform duration-300">arrow_forward</span>
+</button>
+<button class="bg-transparent text-[#374151] border-[1.5px] border-[#E5E7EB] font-label-md text-label-md px-8 py-4 rounded-full hover:bg-surface-container-low transition-all duration-300">
+                    View Examples
+                </button>
+</div>
+</section>
+<!-- Feature Cards Snippet (Demonstrating style constraints) -->
+<section class="mt-24 grid grid-cols-1 md:grid-cols-3 gap-md max-w-container-max w-full">
+<div class="bg-white rounded-xl p-md shadow-[0px_4px_20px_rgba(0,0,0,0.04)] border border-[#E5E7EB] hover:shadow-[0px_8px_30px_rgba(0,0,0,0.08)] transition-shadow duration-300 flex flex-col items-start gap-4">
+<div class="bg-[#F0FDF4] w-12 h-12 rounded-lg flex items-center justify-center text-[#166534]">
+<span class="material-symbols-outlined">psychology</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Cognitive Ease</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Designed to reduce mental load, allowing you to focus entirely on retention.</p>
+</div>
+<div class="bg-white rounded-xl p-md shadow-[0px_4px_20px_rgba(0,0,0,0.04)] border border-[#E5E7EB] hover:shadow-[0px_8px_30px_rgba(0,0,0,0.08)] transition-shadow duration-300 flex flex-col items-start gap-4">
+<div class="bg-[#F0FDF4] w-12 h-12 rounded-lg flex items-center justify-center text-[#166534]">
+<span class="material-symbols-outlined">check_circle</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Spaced Repetition</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Scientifically proven algorithms ensure words enter your long-term memory.</p>
+</div>
+<div class="bg-white rounded-xl p-md shadow-[0px_4px_20px_rgba(0,0,0,0.04)] border border-[#E5E7EB] hover:shadow-[0px_8px_30px_rgba(0,0,0,0.08)] transition-shadow duration-300 flex flex-col items-start gap-4">
+<div class="bg-[#F0FDF4] w-12 h-12 rounded-lg flex items-center justify-center text-[#166534]">
+<span class="material-symbols-outlined">insights</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Clear Progress</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Track your vocabulary growth visually without overwhelming data tables.</p>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-container-lowest dark:bg-surface-container-lowest w-full py-8 mt-xl border-t border-outline-variant">
+<div class="flex flex-col items-center justify-center gap-4 max-w-container-max mx-auto px-gutter">
+<div class="font-label-md text-label-md font-bold text-on-surface-variant dark:text-on-surface-variant">
+                LexiGrow
+            </div>
+<nav class="flex gap-6 font-label-sm text-label-sm">
+<a class="text-on-surface-variant hover:text-primary transition-colors opacity-100 hover:opacity-80" href="#">Privacy Policy</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors opacity-100 hover:opacity-80" href="#">Terms of Service</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors opacity-100 hover:opacity-80" href="#">Contact Us</a>
+</nav>
+<div class="font-label-sm text-label-sm text-on-surface-variant dark:text-on-surface-variant mt-2">
+                © 2024 LexiGrow Learning. All rights reserved.
+            </div>
+</div>
+</footer>
+</body></html>

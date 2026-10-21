@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Review History - LexiGrow</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary": "#38443d",
+                        "on-tertiary-container": "#c5d2ca",
+                        "on-primary-container": "#93e0a2",
+                        "primary-fixed": "#a6f4b5",
+                        "on-secondary": "#ffffff",
+                        "surface-bright": "#f9f9ff",
+                        "secondary-container": "#8cf5b2",
+                        "error-container": "#ffdad6",
+                        "surface-container-highest": "#d9e3f7",
+                        "secondary": "#006d3e",
+                        "primary": "#004c22",
+                        "inverse-surface": "#273140",
+                        "surface-container": "#e6eeff",
+                        "on-secondary-fixed": "#00210f",
+                        "inverse-primary": "#8bd79b",
+                        "secondary-fixed-dim": "#73db9a",
+                        "outline-variant": "#bfc9bd",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed-variant": "#00522d",
+                        "surface-tint": "#1f6c3a",
+                        "primary-fixed-dim": "#8bd79b",
+                        "on-primary-fixed-variant": "#005226",
+                        "inverse-on-surface": "#ebf1ff",
+                        "on-secondary-container": "#007241",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed": "#d9e6dd",
+                        "surface": "#f9f9ff",
+                        "on-primary-fixed": "#00210b",
+                        "tertiary-fixed-dim": "#bdcac1",
+                        "secondary-fixed": "#8ff8b4",
+                        "tertiary-container": "#4f5b54",
+                        "primary-container": "#166534",
+                        "surface-container-low": "#eff3ff",
+                        "on-tertiary-fixed": "#131e19",
+                        "surface-dim": "#d0daef",
+                        "on-background": "#121c2a",
+                        "on-error-container": "#93000a",
+                        "error": "#ba1a1a",
+                        "outline": "#707a6f",
+                        "on-error": "#ffffff",
+                        "background": "#f9f9ff",
+                        "on-tertiary-fixed-variant": "#3e4943",
+                        "on-primary": "#ffffff",
+                        "surface-variant": "#d9e3f7",
+                        "surface-container-high": "#dee9fd",
+                        "on-surface-variant": "#404940",
+                        "on-surface": "#121c2a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xl": "80px",
+                        "base": "8px",
+                        "sm": "12px",
+                        "lg": "48px",
+                        "gutter": "24px",
+                        "container-max": "1100px",
+                        "md": "24px",
+                        "xs": "4px"
+                    },
+                    "fontFamily": {
+                        "headline-lg-mobile": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "display": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface-container-lowest text-on-surface min-h-screen flex flex-col">
+<!-- TopNavBar -->
+<header class="bg-surface-container-lowest shadow-[0px_4px_20px_rgba(0,0,0,0.04)] full-width top-0 z-50">
+<div class="flex justify-between items-center w-full px-gutter max-w-container-max mx-auto h-16">
+<div class="text-headline-md font-headline-md font-bold text-primary flex items-center gap-2">
+<span class="material-symbols-outlined" data-weight="fill" style="font-variation-settings: 'FILL' 1;">eco</span>
+                LexiGrow
+            </div>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-label-md font-label-md text-on-surface-variant pb-1 hover:text-primary transition-colors duration-200" href="#">Home</a>
+<a class="text-label-md font-label-md text-on-surface-variant pb-1 hover:text-primary transition-colors duration-200" href="#">Learn</a>
+<a class="text-label-md font-label-md text-on-surface-variant pb-1 hover:text-primary transition-colors duration-200" href="#">Admin</a>
+<a class="text-label-md font-label-md text-primary border-b-2 border-primary pb-1 hover:text-primary transition-colors duration-200" href="#">Review</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors duration-200 scale-95 active:scale-90 transition-transform">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<main class="flex-grow w-full max-w-container-max mx-auto px-gutter py-lg flex flex-col gap-lg">
+<!-- Header & Controls -->
+<section class="flex flex-col md:flex-row md:items-end justify-between gap-base border-b border-outline-variant pb-md">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface mb-xs">Review History</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Track your vocabulary mastery and revisit challenging words.</p>
+</div>
+<div class="flex flex-col sm:flex-row gap-sm items-center">
+<div class="relative w-full sm:w-64">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full pl-10 pr-4 py-2 border-1.5 border-outline-variant rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-[#86EFAC] focus:border-transparent font-body-md text-body-md transition-all duration-200" placeholder="Search words..." type="text"/>
+</div>
+<div class="relative w-full sm:w-auto">
+<select class="w-full sm:w-auto appearance-none pl-4 pr-10 py-2 border-1.5 border-outline-variant rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-[#86EFAC] focus:border-transparent font-label-md text-label-md text-on-surface-variant cursor-pointer transition-all duration-200">
+<option>Recent</option>
+<option>Hardest</option>
+<option>Easiest</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+</div>
+</section>
+<!-- Stats Bar -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+<div class="bg-surface-bright rounded-xl p-md border border-[#E5E7EB] shadow-[0px_4px_20px_rgba(0,0,0,0.04)] flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-[#166534] mb-xs text-3xl">task_alt</span>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Total Mastered</p>
+<p class="font-headline-lg text-headline-lg text-on-surface">1,204</p>
+</div>
+<div class="bg-surface-bright rounded-xl p-md border border-[#E5E7EB] shadow-[0px_4px_20px_rgba(0,0,0,0.04)] flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-[#166534] mb-xs text-3xl">monitoring</span>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Retention Rate</p>
+<p class="font-headline-lg text-headline-lg text-on-surface">94%</p>
+</div>
+<div class="bg-surface-bright rounded-xl p-md border border-[#E5E7EB] shadow-[0px_4px_20px_rgba(0,0,0,0.04)] flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-[#166534] mb-xs text-3xl">local_fire_department</span>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Current Streak</p>
+<p class="font-headline-lg text-headline-lg text-on-surface">5 days</p>
+</div>
+</section>
+<!-- Grid -->
+<section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-md">
+<!-- Card 1 -->
+<div class="bg-surface-container-lowest rounded-xl p-md border border-[#E5E7EB] shadow-[0px_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0px_8px_30px_rgba(0,0,0,0.08)] transition-all duration-300 flex flex-col justify-between group">
+<div>
+<div class="flex justify-between items-start mb-sm">
+<h3 class="font-headline-md text-headline-md text-on-surface">Ephemeral</h3>
+<div aria-label="Retention strength: High" class="flex gap-1">
+<div class="w-2 h-2 rounded-full bg-[#86EFAC]"></div>
+<div class="w-2 h-2 rounded-full bg-[#86EFAC]"></div>
+<div class="w-2 h-2 rounded-full bg-[#86EFAC]"></div>
+</div>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-3">Lasting for a very short time; fleeting or transient in nature.</p>
+</div>
+<div class="grid grid-cols-3 gap-2 mb-sm pt-sm border-t border-outline-variant">
+<div class="flex flex-col gap-1">
+<span class="text-label-sm font-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">bar_chart</span>
+            Strong
+        </span>
+<div class="flex gap-0.5">
+<div class="h-1 w-full bg-primary rounded-full"></div>
+<div class="h-1 w-full bg-primary rounded-full"></div>
+<div class="h-1 w-full bg-primary rounded-full"></div>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-label-sm font-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">history</span>
+            12 reviews
+        </span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-label-sm font-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">event</span>
+            Next: 14d
+        </span>
+</div>
+</div><div class="mt-md pt-sm border-t border-outline-variant flex justify-between items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Last reviewed: 2d ago</span>
+<button class="text-primary-container hover:text-primary transition-colors duration-200 flex items-center gap-1 font-label-md text-label-md bg-[#F0FDF4] px-3 py-1.5 rounded-lg group-hover:bg-[#86EFAC] group-hover:text-[#166534]">
+<span class="material-symbols-outlined text-[18px]">replay</span>
+                        Re-review
+                    </button>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container-lowest rounded-xl p-md border border-[#E5E7EB] shadow-[0px_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0px_8px_30px_rgba(0,0,0,0.08)] transition-all duration-300 flex flex-col justify-between group">
+<div>
+<div class="flex justify-between items-start mb-sm">
+<h3 class="font-headline-md text-headline-md text-on-surface">Sycophant</h3>
+<div aria-label="Retention strength: Medium" class="flex gap-1">
+<div class="w-2 h-2 rounded-full bg-[#86EFAC]"></div>
+<div class="w-2 h-2 rounded-full bg-[#86EFAC]"></div>
+<div class="w-2 h-2 rounded-full bg-outline-variant"></div>
+</div>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-3">A person who acts obsequiously toward someone important in order to gain advantage.</p>
+</div>
+<div class="grid grid-cols-3 gap-2 mb-sm pt-sm border-t border-outline-variant">
+<div class="flex flex-col gap-1">
+<span class="text-label-sm font-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">bar_chart</span>
+            Stable
+        </span>
+<div class="flex gap-0.5">
+<div class="h-1 w-full bg-primary rounded-full"></div>
+<div class="h-1 w-full bg-primary rounded-full"></div>
+<div class="h-1 w-full bg-outline-variant rounded-full"></div>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-label-sm font-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">history</span>
+            8 reviews
+        </span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-label-sm font-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">event</span>
+            Next: 5d
+        </span>
+</div>
+</div><div class="mt-md pt-sm border-t border-outline-variant flex justify-between items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Last reviewed: 5d ago</span>
+<button class="text-primary-container hover:text-primary transition-colors duration-200 flex items-center gap-1 font-label-md text-label-md bg-[#F0FDF4] px-3 py-1.5 rounded-lg group-hover:bg-[#86EFAC] group-hover:text-[#166534]">
+<span class="material-symbols-outlined text-[18px]">replay</span>
+                        Re-review
+                    </button>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="bg-surface-container-lowest rounded-xl p-md border border-[#E5E7EB] shadow-[0px_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0px_8px_30px_rgba(0,0,0,0.08)] transition-all duration-300 flex flex-col justify-between group">
+<div>
+<div class="flex justify-between items-start mb-sm">
+<h3 class="font-headline-md text-headline-md text-on-surface">Obfuscate</h3>
+<div aria-label="Retention strength: Low" class="flex gap-1">
+<div class="w-2 h-2 rounded-full bg-[#86EFAC]"></div>
+<div class="w-2 h-2 rounded-full bg-outline-variant"></div>
+<div class="w-2 h-2 rounded-full bg-outline-variant"></div>
+</div>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-3">Render obscure, unclear, or unintelligible; to confuse.</p>
+</div>
+<div class="grid grid-cols-3 gap-2 mb-sm pt-sm border-t border-outline-variant">
+<div class="flex flex-col gap-1">
+<span class="text-label-sm font-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">bar_chart</span>
+            Fading
+        </span>
+<div class="flex gap-0.5">
+<div class="h-1 w-full bg-primary rounded-full"></div>
+<div class="h-1 w-full bg-outline-variant rounded-full"></div>
+<div class="h-1 w-full bg-outline-variant rounded-full"></div>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-label-sm font-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">history</span>
+            4 reviews
+        </span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-label-sm font-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">event</span>
+            Next: 1d
+        </span>
+</div>
+</div><div class="mt-md pt-sm border-t border-outline-variant flex justify-between items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Last reviewed: 1w ago</span>
+<button class="text-primary-container hover:text-primary transition-colors duration-200 flex items-center gap-1 font-label-md text-label-md bg-[#F0FDF4] px-3 py-1.5 rounded-lg group-hover:bg-[#86EFAC] group-hover:text-[#166534]">
+<span class="material-symbols-outlined text-[18px]">replay</span>
+                        Re-review
+                    </button>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="bg-surface-container-lowest rounded-xl p-md border border-[#E5E7EB] shadow-[0px_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0px_8px_30px_rgba(0,0,0,0.08)] transition-all duration-300 flex flex-col justify-between group">
+<div>
+<div class="flex justify-between items-start mb-sm">
+<h3 class="font-headline-md text-headline-md text-on-surface">Lugubrious</h3>
+<div aria-label="Retention strength: High" class="flex gap-1">
+<div class="w-2 h-2 rounded-full bg-[#86EFAC]"></div>
+<div class="w-2 h-2 rounded-full bg-[#86EFAC]"></div>
+<div class="w-2 h-2 rounded-full bg-[#86EFAC]"></div>
+</div>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-3">Looking or sounding sad and dismal.</p>
+</div>
+<div class="grid grid-cols-3 gap-2 mb-sm pt-sm border-t border-outline-variant">
+<div class="flex flex-col gap-1">
+<span class="text-label-sm font-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">bar_chart</span>
+            Strong
+        </span>
+<div class="flex gap-0.5">
+<div class="h-1 w-full bg-primary rounded-full"></div>
+<div class="h-1 w-full bg-primary rounded-full"></div>
+<div class="h-1 w-full bg-primary rounded-full"></div>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-label-sm font-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">history</span>
+            15 reviews
+        </span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-label-sm font-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">event</span>
+            Next: 21d
+        </span>
+</div>
+</div><div class="mt-md pt-sm border-t border-outline-variant flex justify-between items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Last reviewed: 1d ago</span>
+<button class="text-primary-container hover:text-primary transition-colors duration-200 flex items-center gap-1 font-label-md text-label-md bg-[#F0FDF4] px-3 py-1.5 rounded-lg group-hover:bg-[#86EFAC] group-hover:text-[#166534]">
+<span class="material-symbols-outlined text-[18px]">replay</span>
+                        Re-review
+                    </button>
+</div>
+</div>
+<!-- Card 5 -->
+<div class="bg-surface-container-lowest rounded-xl p-md border border-[#E5E7EB] shadow-[0px_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0px_8px_30px_rgba(0,0,0,0.08)] transition-all duration-300 flex flex-col justify-between group">
+<div>
+<div class="flex justify-between items-start mb-sm">
+<h3 class="font-headline-md text-headline-md text-on-surface">Pernicious</h3>
+<div aria-label="Retention strength: Medium" class="flex gap-1">
+<div class="w-2 h-2 rounded-full bg-[#86EFAC]"></div>
+<div class="w-2 h-2 rounded-full bg-[#86EFAC]"></div>
+<div class="w-2 h-2 rounded-full bg-outline-variant"></div>
+</div>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-3">Having a harmful effect, especially in a gradual or subtle way.</p>
+</div>
+<div class="grid grid-cols-3 gap-2 mb-sm pt-sm border-t border-outline-variant">
+<div class="flex flex-col gap-1">
+<span class="text-label-sm font-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">bar_chart</span>
+            Stable
+        </span>
+<div class="flex gap-0.5">
+<div class="h-1 w-full bg-primary rounded-full"></div>
+<div class="h-1 w-full bg-primary rounded-full"></div>
+<div class="h-1 w-full bg-outline-variant rounded-full"></div>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-label-sm font-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">history</span>
+            7 reviews
+        </span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-label-sm font-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">event</span>
+            Next: 4d
+        </span>
+</div>
+</div><div class="mt-md pt-sm border-t border-outline-variant flex justify-between items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Last reviewed: 4d ago</span>
+<button class="text-primary-container hover:text-primary transition-colors duration-200 flex items-center gap-1 font-label-md text-label-md bg-[#F0FDF4] px-3 py-1.5 rounded-lg group-hover:bg-[#86EFAC] group-hover:text-[#166534]">
+<span class="material-symbols-outlined text-[18px]">replay</span>
+                        Re-review
+                    </button>
+</div>
+</div>
+<!-- Card 6 -->
+<div class="bg-surface-container-lowest rounded-xl p-md border border-[#E5E7EB] shadow-[0px_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0px_8px_30px_rgba(0,0,0,0.08)] transition-all duration-300 flex flex-col justify-between group">
+<div>
+<div class="flex justify-between items-start mb-sm">
+<h3 class="font-headline-md text-headline-md text-on-surface">Fastidious</h3>
+<div aria-label="Retention strength: High" class="flex gap-1">
+<div class="w-2 h-2 rounded-full bg-[#86EFAC]"></div>
+<div class="w-2 h-2 rounded-full bg-[#86EFAC]"></div>
+<div class="w-2 h-2 rounded-full bg-[#86EFAC]"></div>
+</div>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-3">Very attentive to and concerned about accuracy and detail.</p>
+</div>
+<div class="grid grid-cols-3 gap-2 mb-sm pt-sm border-t border-outline-variant">
+<div class="flex flex-col gap-1">
+<span class="text-label-sm font-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">bar_chart</span>
+            Strong
+        </span>
+<div class="flex gap-0.5">
+<div class="h-1 w-full bg-primary rounded-full"></div>
+<div class="h-1 w-full bg-primary rounded-full"></div>
+<div class="h-1 w-full bg-primary rounded-full"></div>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-label-sm font-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">history</span>
+            10 reviews
+        </span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-label-sm font-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">event</span>
+            Next: 10d
+        </span>
+</div>
+</div><div class="mt-md pt-sm border-t border-outline-variant flex justify-between items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Last reviewed: 2d ago</span>
+<button class="text-primary-container hover:text-primary transition-colors duration-200 flex items-center gap-1 font-label-md text-label-md bg-[#F0FDF4] px-3 py-1.5 rounded-lg group-hover:bg-[#86EFAC] group-hover:text-[#166534]">
+<span class="material-symbols-outlined text-[18px]">replay</span>
+                        Re-review
+                    </button>
+</div>
+</div>
+</section>
+<!-- Pagination -->
+<section class="flex justify-center items-center gap-4 mt-8">
+<button class="px-4 py-2 border-1.5 border-[#E5E7EB] rounded-lg font-label-md text-label-md text-on-surface-variant hover:bg-surface-bright transition-colors duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+<span class="material-symbols-outlined text-[18px]">chevron_left</span>
+                Previous
+            </button>
+<div class="font-label-md text-label-md text-on-surface-variant">
+                Page 1 of 42
+            </div>
+<button class="px-4 py-2 border-1.5 border-[#E5E7EB] rounded-lg font-label-md text-label-md text-on-surface hover:bg-surface-bright transition-colors duration-200 flex items-center gap-2">
+                Next
+                <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-container-low border-t border-outline-variant full-width mt-auto">
+<div class="flex flex-col md:flex-row justify-between items-center w-full py-lg px-gutter max-w-container-max mx-auto gap-base">
+<div class="text-label-md font-label-md font-bold text-primary opacity-80 hover:opacity-100 transition-opacity">
+                LexiGrow
+            </div>
+<div class="text-label-sm font-label-sm text-secondary">
+                © 2024 LexiGrow. Cultivating Clarity.
+            </div>
+<div class="flex gap-4">
+<a class="text-label-sm font-label-sm text-on-surface-variant hover:underline hover:text-primary opacity-80 hover:opacity-100 transition-opacity" href="#">Privacy Policy</a>
+<a class="text-label-sm font-label-sm text-on-surface-variant hover:underline hover:text-primary opacity-80 hover:opacity-100 transition-opacity" href="#">Terms of Service</a>
+<a class="text-label-sm font-label-sm text-on-surface-variant hover:underline hover:text-primary opacity-80 hover:opacity-100 transition-opacity" href="#">Help Center</a>
+</div>
+</div>
+</footer>
+</body></html>

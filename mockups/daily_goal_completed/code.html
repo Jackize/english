@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Daily Goal Reached! - LexiGrow</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed-dim": "#bdcac1",
+                        "surface-dim": "#d0daef",
+                        "outline-variant": "#bfc9bd",
+                        "on-secondary-fixed-variant": "#00522d",
+                        "on-primary": "#ffffff",
+                        "primary-fixed-dim": "#8bd79b",
+                        "on-surface-variant": "#404940",
+                        "on-background": "#121c2a",
+                        "on-tertiary-fixed": "#131e19",
+                        "surface-bright": "#f9f9ff",
+                        "on-secondary": "#ffffff",
+                        "tertiary-container": "#4f5b54",
+                        "inverse-surface": "#273140",
+                        "surface-container-low": "#eff3ff",
+                        "on-secondary-container": "#007241",
+                        "tertiary": "#38443d",
+                        "surface-container-high": "#dee9fd",
+                        "primary-container": "#166534",
+                        "on-tertiary-fixed-variant": "#3e4943",
+                        "on-primary-fixed": "#00210b",
+                        "error": "#ba1a1a",
+                        "background": "#f9f9ff",
+                        "primary": "#004c22",
+                        "on-primary-fixed-variant": "#005226",
+                        "on-primary-container": "#93e0a2",
+                        "error-container": "#ffdad6",
+                        "surface-container": "#e6eeff",
+                        "primary-fixed": "#a6f4b5",
+                        "on-surface": "#121c2a",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary": "#006d3e",
+                        "surface-tint": "#1f6c3a",
+                        "on-tertiary-container": "#c5d2ca",
+                        "secondary-container": "#8cf5b2",
+                        "inverse-on-surface": "#ebf1ff",
+                        "tertiary-fixed": "#d9e6dd",
+                        "secondary-fixed-dim": "#73db9a",
+                        "secondary-fixed": "#8ff8b4",
+                        "surface": "#f9f9ff",
+                        "surface-container-highest": "#d9e3f7",
+                        "on-error": "#ffffff",
+                        "on-secondary-fixed": "#00210f",
+                        "outline": "#707a6f",
+                        "on-tertiary": "#ffffff",
+                        "inverse-primary": "#8bd79b",
+                        "surface-variant": "#d9e3f7",
+                        "on-error-container": "#93000a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "base": "8px",
+                        "lg": "48px",
+                        "xs": "4px",
+                        "xl": "80px",
+                        "sm": "12px",
+                        "md": "24px",
+                        "gutter": "24px",
+                        "container-max": "1100px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "label-md": ["Inter"],
+                        "display": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "600" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500" }],
+                        "display": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .confetti-piece {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #8bd79b;
+            opacity: 0;
+        }
+
+        @keyframes fall {
+            0% { opacity: 1; top: -10%; transform: translateX(0) rotate(0deg); }
+            100% { opacity: 0; top: 110%; transform: translateX(20px) rotate(360deg); }
+        }
+
+        .celebration-bounce {
+            animation: bounceIn 1s cubic-bezier(0.36, 0, 0.66, -0.56) forwards;
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md min-h-screen flex flex-col antialiased relative overflow-hidden">
+<!-- Confetti Container -->
+<div class="absolute inset-0 pointer-events-none z-0" id="confetti-container"></div>
+<main class="flex-grow flex flex-col items-center justify-center p-gutter relative z-10 w-full max-w-container-max mx-auto">
+<!-- Central Graphic/Card -->
+<div class="bg-surface-container-lowest rounded-xl p-md md:p-lg flex flex-col items-center text-center w-full max-w-md mx-auto celebration-bounce" style="box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.04); border: 1.5px solid #E5E7EB;">
+<!-- Icon/Graphic -->
+<div class="w-32 h-32 mb-8 rounded-full bg-surface-container-high flex items-center justify-center border-4 border-primary-fixed">
+<span class="material-symbols-outlined text-primary-container" data-icon="eco" style="font-size: 64px; font-variation-settings: 'FILL' 1;">eco</span>
+</div>
+<!-- Typography -->
+<h1 class="font-headline-lg text-headline-lg md:font-display md:text-display text-on-surface mb-sm tracking-tight">
+                Daily Goal Reached!
+            </h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant mb-xl">
+                You've mastered <strong class="text-primary-container font-semibold">10</strong> new words today. Keep the <strong class="text-primary-container font-semibold">6-day streak</strong> alive!
+            </p>
+<!-- Actions -->
+<div class="w-full flex flex-col gap-4">
+<button class="w-full bg-secondary-fixed text-primary-container font-label-md text-label-md py-4 rounded-lg hover:bg-secondary-fixed-dim transition-colors duration-200 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" data-icon="insights" style="font-size: 20px;">insights</span>
+                    View Progress
+                </button>
+<button class="w-full bg-transparent border-2 border-outline-variant text-on-surface-variant font-label-md text-label-md py-4 rounded-lg hover:bg-surface-variant transition-colors duration-200 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" data-icon="school" style="font-size: 20px;">school</span>
+                    Continue Learning
+                </button>
+</div>
+</div>
+</main>
+<script>
+        // Simple confetti effect
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('confetti-container');
+            const colors = ['#8bd79b', '#a6f4b5', '#166534', '#dee9fd'];
+            
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.classList.add('confetti-piece');
+                
+                // Randomize properties
+                const left = Math.random() * 100;
+                const animDuration = Math.random() * 3 + 2;
+                const delay = Math.random() * 2;
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                
+                confetti.style.left = `${left}%`;
+                confetti.style.backgroundColor = color;
+                confetti.style.animation = `fall ${animDuration}s linear ${delay}s infinite`;
+                
+                container.appendChild(confetti);
+            }
+        });
+    </script>
+</body></html>

@@ -97,8 +97,13 @@ function toLessonCard(
   };
 }
 
-export async function getOverview(userId?: string): Promise<Overview> {
-  const levels = await prisma.level.findMany({
+// ---------------------------------------------------------------------------
+// Curriculum (level/topic/lesson) là dữ liệu tĩnh — cache trong RAM để khỏi
+// round-trip DB (~250ms/lần query tới Supabase) ở mỗi request.
+// TTL 60s để thay đổi seed/migrate vẫn tự cập nhật.
+// ---------------------------------------------------------------------------
+async function fetchCurriculumLevels() {
+  return prisma.level.findMany({
     orderBy: { order: "asc" },
     include: {
       topics: { orderBy: { order: "asc" } },
@@ -111,19 +116,48 @@ export async function getOverview(userId?: string): Promise<Overview> {
       },
     },
   });
+}
 
-  const progressRows = userId
-    ? await prisma.lessonProgress.findMany({
-        where: { userId },
-        select: {
-          lessonId: true,
-          completed: true,
-          theoryDone: true,
-          bestScore: true,
-          quizTotal: true,
-        },
-      })
-    : [];
+type CurriculumLevels = Awaited<ReturnType<typeof fetchCurriculumLevels>>;
+
+let curriculumCache: { data: CurriculumLevels; at: number } | null = null;
+
+async function getCurriculumLevels() {
+  if (curriculumCache && Date.now() - curriculumCache.at < 60_000) {
+    return curriculumCache.data;
+  }
+  const data = await fetchCurriculumLevels();
+  curriculumCache = { data, at: Date.now() };
+  return data;
+}
+
+export async function getOverview(userId?: string): Promise<Overview> {
+  // Query user-dependent chạy SONG SONG (trước đây là 4 query tuần tự
+  // ≈ 4 × 250ms round-trip = ~1s chỉ để chờ DB).
+  const [levels, progressRows, user, reviewCount] = await Promise.all([
+    getCurriculumLevels(),
+    userId
+      ? prisma.lessonProgress.findMany({
+          where: { userId },
+          select: {
+            lessonId: true,
+            completed: true,
+            theoryDone: true,
+            bestScore: true,
+            quizTotal: true,
+          },
+        })
+      : Promise.resolve([]),
+    userId
+      ? prisma.user.findUnique({
+          where: { id: userId },
+          select: { xp: true, streak: true },
+        })
+      : Promise.resolve(null),
+    userId
+      ? prisma.reviewItem.count({ where: { userId, resolved: false } })
+      : Promise.resolve(0),
+  ]);
 
   const progressByLesson = new Map(progressRows.map((row) => [row.lessonId, row]));
 
@@ -238,17 +272,6 @@ export async function getOverview(userId?: string): Promise<Overview> {
       }
     : null;
 
-  const user = userId
-    ? await prisma.user.findUnique({
-        where: { id: userId },
-        select: { xp: true, streak: true },
-      })
-    : null;
-
-  const reviewCount = userId
-    ? await prisma.reviewItem.count({ where: { userId, resolved: false } })
-    : 0;
-
   const percent = totalLessons === 0 ? 0 : Math.round((completedLessons / totalLessons) * 100);
   const plant = getPlantStage(percent);
   const totalXp = allLessons.reduce((sum, lesson) => sum + lesson.xp, 0);
@@ -274,32 +297,34 @@ export async function getOverview(userId?: string): Promise<Overview> {
 }
 
 export async function getLessonForLearner(lessonId: string, userId?: string) {
-  const lesson = await prisma.lesson.findUnique({
-    where: { id: lessonId },
-    include: {
-      level: true,
-      topic: true,
-      sections: { orderBy: { order: "asc" } },
-      vocab: { orderBy: { order: "asc" } },
-      questions: {
-        orderBy: { order: "asc" },
-        include: {
-          choices: {
-            orderBy: { order: "asc" },
-            select: { id: true, label: true, order: true },
+  // Song song: lesson (query lớn, nhiều include) + progress (query nhỏ)
+  const [lesson, progress] = await Promise.all([
+    prisma.lesson.findUnique({
+      where: { id: lessonId },
+      include: {
+        level: true,
+        topic: true,
+        sections: { orderBy: { order: "asc" } },
+        vocab: { orderBy: { order: "asc" } },
+        questions: {
+          orderBy: { order: "asc" },
+          include: {
+            choices: {
+              orderBy: { order: "asc" },
+              select: { id: true, label: true, order: true },
+            },
           },
         },
       },
-    },
-  });
+    }),
+    userId
+      ? prisma.lessonProgress.findUnique({
+          where: { userId_lessonId: { userId, lessonId } },
+        })
+      : Promise.resolve(null),
+  ]);
 
   if (!lesson) return null;
-
-  const progress = userId
-    ? await prisma.lessonProgress.findUnique({
-        where: { userId_lessonId: { userId, lessonId } },
-      })
-    : null;
 
   return {
     id: lesson.id,
@@ -418,34 +443,40 @@ export async function getAdminLesson(lessonId: string) {
 }
 
 export async function getTopicDetail(levelCode: string, slug: string, userId?: string) {
-  const topic = await prisma.topic.findFirst({
-    where: { slug, level: { code: levelCode } },
-    include: {
-      level: true,
-      lessons: {
-        orderBy: { order: "asc" },
-        include: {
-          questions: { select: { id: true } },
-          vocab: { select: { id: true } },
+  // Song song: topic + progress (progress tra theo relation topic nên không
+  // cần chờ danh sách lessonId — trước đây là 2 query tuần tự).
+  const [topic, progressRows] = await Promise.all([
+    prisma.topic.findFirst({
+      where: { slug, level: { code: levelCode } },
+      include: {
+        level: true,
+        lessons: {
+          orderBy: { order: "asc" },
+          include: {
+            questions: { select: { id: true } },
+            vocab: { select: { id: true } },
+          },
         },
       },
-    },
-  });
+    }),
+    userId
+      ? prisma.lessonProgress.findMany({
+          where: {
+            userId,
+            lesson: { topic: { slug, level: { code: levelCode } } },
+          },
+          select: {
+            lessonId: true,
+            completed: true,
+            theoryDone: true,
+            bestScore: true,
+            quizTotal: true,
+          },
+        })
+      : Promise.resolve([]),
+  ]);
 
   if (!topic) return null;
-
-  const progressRows = userId
-    ? await prisma.lessonProgress.findMany({
-        where: { userId, lessonId: { in: topic.lessons.map((lesson) => lesson.id) } },
-        select: {
-          lessonId: true,
-          completed: true,
-          theoryDone: true,
-          bestScore: true,
-          quizTotal: true,
-        },
-      })
-    : [];
 
   const progressByLesson = new Map(progressRows.map((row) => [row.lessonId, row]));
 

@@ -27,7 +27,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 # Copy toàn bộ app đã build (bao gồm node_modules + .next + generated prisma client)
-COPY --from=build /app ._
+COPY --from=build /app ./
 
 EXPOSE 3000
 CMD ["npx", "next", "start", "-p", "3000"]

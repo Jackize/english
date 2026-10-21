@@ -1,0 +1,66 @@
+# ============================================================
+# CI/CD cho English Vocabulary App (Next.js 16 + Prisma 7)
+# Runner: vps-docker-runner (Docker executor, image node:22)
+# ============================================================
+
+stages:
+  - check
+  - build
+  - deploy
+
+default:
+  image: node:22
+  interruptible: true
+
+variables:
+  # Cache npm giữa các job/pipeline → npm ci nhanh hơn nhiều
+  npm_config_cache: "$CI_PROJECT_DIR/.npm"
+
+cache:
+  key:
+    files:
+      - package-lock.json   # đổi lock file = cache key mới
+  paths:
+    - .npm/
+
+# ------------------------------------------------------------
+# Stage CHECK: lint + typecheck (chạy ở mọi push/MR)
+# ------------------------------------------------------------
+check:
+  stage: check
+  script:
+    - npm ci --prefer-offline
+    - npm run lint
+    - npx tsc --noEmit
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+# ------------------------------------------------------------
+# Stage BUILD: build production (chỉ ở nhánh chính)
+# ------------------------------------------------------------
+build:
+  stage: build
+  script:
+    - npm ci --prefer-offline
+    # prisma generate chạy qua postinstall, build script tự generate lại
+    - npm run build
+  artifacts:
+    name: "build-$CI_COMMIT_REF_SLUG"
+    paths:
+      - .next/
+    expire_in: 3 days
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# ------------------------------------------------------------
+# Stage DEPLOY: migrate database (chỉ bấm tay khi cần)
+# ------------------------------------------------------------
+prisma:migrate:
+  stage: deploy
+  script:
+    - npm ci --prefer-offline
+    - npx prisma migrate deploy
+  when: manual          # chỉ chạy khi bấm nút trong UI
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

@@ -64,3 +64,30 @@ prisma:migrate:
   when: manual          # chỉ chạy khi bấm nút trong UI
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# ------------------------------------------------------------
+# Stage DEPLOY: deploy app lên VPS qua SSH (bấm tay)
+# ------------------------------------------------------------
+deploy:production:
+  stage: deploy
+  image: node:22
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq openssh-client rsync >/dev/null
+    - mkdir -p ~/.ssh && chmod 700 ~/.ssh
+    - cp "$VPS_DEPLOY_KEY" ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+    - ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+  script:
+    # Đồng bộ source lên VPS (không gửi node_modules/.next/.env — image tự build trên đó)
+    - >
+      rsync -a --delete
+      --exclude node_modules --exclude .next --exclude .git
+      --exclude .env --exclude "*.db" --exclude .DS_Store --exclude mockups
+      -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no"
+      ./ "root@${VPS_HOST}:${VPS_DEPLOY_PATH}/repo/"
+    # Build image mới + restart container
+    - >
+      ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "root@${VPS_HOST}"
+      "cd ${VPS_DEPLOY_PATH} && docker compose build web && docker compose up -d && docker ps --filter name=english-vocab-app --format '{{.Status}}'"
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual

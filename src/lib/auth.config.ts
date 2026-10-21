@@ -1,6 +1,9 @@
 import type { NextAuthConfig } from "next-auth";
 
 export const authConfig: NextAuthConfig = {
+  // Tin tưởng host từ reverse proxy (Traefik) — bắt buộc khi deploy sau proxy,
+  // nếu không Auth.js báo UntrustedHost cho mọi request.
+  trustHost: true,
   providers: [],
   session: { strategy: "jwt" },
   pages: {

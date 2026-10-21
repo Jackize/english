@@ -8,8 +8,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "eng-growth — Master English Vocabulary",
-  description: "English vocabulary learning app for Vietnamese learners",
+  title: "eng-growth — Lộ trình IELTS A1 → C2",
+  description:
+    "Học IELTS theo từng chặng: ngữ pháp và từ vựng chia theo sáu bậc CEFR từ A1 đến C2, có bài kiểm tra và ôn lại câu sai.",
 };
 
 export default function RootLayout({
@@ -20,12 +21,13 @@ export default function RootLayout({
   return (
     <html lang="vi" className={`${inter.variable} h-full antialiased`}>
       <head>
+        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-full flex flex-col bg-background text-on-background">{children}</body>
+      <body className="min-h-full bg-background text-ink">{children}</body>
     </html>
   );
 }

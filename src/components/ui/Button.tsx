@@ -1,26 +1,24 @@
 import { ButtonHTMLAttributes } from "react";
 
-type Variant = "primary" | "secondary" | "outline" | "danger";
+type Variant = "primary" | "mint" | "outline" | "ghost" | "danger";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
 }
 
 const variants: Record<Variant, string> = {
-  primary:
-    "bg-accent-green text-accent-green-dark hover:opacity-90 elevation-1 active:scale-95",
-  secondary:
-    "bg-primary-container text-on-secondary hover:bg-primary transition-colors shadow-sm active:scale-95",
+  primary: "bg-brand text-white hover:bg-brand-dark elevation-1 active:scale-[0.985]",
+  mint: "bg-mint text-brand-dark hover:brightness-95 active:scale-[0.985]",
   outline:
-    "bg-transparent border-[1.5px] border-outline-variant text-on-surface-variant hover:bg-surface-container-low active:scale-95",
-  danger:
-    "bg-error-container text-on-error-container hover:opacity-90 active:scale-95",
+    "bg-surface border border-line text-ink hover:border-brand/30 hover:text-brand active:scale-[0.985]",
+  ghost: "bg-transparent text-muted hover:bg-surface-muted hover:text-ink",
+  danger: "bg-[#fde8e6] text-danger hover:brightness-95",
 };
 
 export function Button({ variant = "primary", className = "", children, ...props }: ButtonProps) {
   return (
     <button
-      className={`inline-flex items-center justify-center gap-2 rounded-lg px-6 py-3 text-sm font-medium transition-all disabled:opacity-50 ${variants[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${variants[variant]} ${className}`}
       {...props}
     >
       {children}

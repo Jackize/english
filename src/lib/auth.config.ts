@@ -11,12 +11,12 @@ export const authConfig: NextAuthConfig = {
       const isLoggedIn = !!auth?.user;
       const { pathname } = request.nextUrl;
 
-      const protectedPaths = ["/learn", "/review", "/admin", "/milestones"];
+      const protectedPaths = ["/lesson", "/review", "/admin"];
       const isProtected = protectedPaths.some((p) => pathname.startsWith(p));
 
       if (isProtected) return isLoggedIn;
       if ((pathname === "/login" || pathname === "/register") && isLoggedIn) {
-        return Response.redirect(new URL("/learn", request.nextUrl));
+        return Response.redirect(new URL("/", request.nextUrl));
       }
       return true;
     },

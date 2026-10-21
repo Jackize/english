@@ -1,90 +1,229 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { prisma } from "../src/lib/prisma";
-import { confirmImport } from "../src/lib/import-service";
-import { slugify } from "../src/lib/utils";
+import { buildVocabularyQuestions } from "../src/lib/vocabulary-quiz";
+import { CURRICULUM, type SeedQuestion, type SeedWord } from "./curriculum-data";
 
-const SAMPLE_DOC_URL =
-  "https://docs.google.com/document/d/17gFNBjkb3mMp3Tf4LpzSk9fkeE9T__b4rMz557XCB2Y";
+function vocabularyQuestions(words: SeedWord[]): SeedQuestion[] {
+  return buildVocabularyQuestions(words);
+}
 
-const FALLBACK_DATA = {
-  name: "CAM 12-20 READING",
-  categories: [
-    {
-      name: "[C12T1] - Cork",
-      words: [
-        { word: "cork", ipa: "/kɔːk/", wordForm: "n", meaningEn: "the thick outer bark of cork oak", meaningVi: "vỏ cây sồi bần" },
-        { word: "bark", ipa: "/bɑːk/", wordForm: "n", meaningEn: "outer covering of a tree", meaningVi: "vỏ cây", example: "Dogs bark" },
-        { word: "oak", ipa: "/əʊk/", wordForm: "n", meaningEn: "a large forest tree", meaningVi: "cây sồi" },
-        { word: "remarkable", ipa: "/rɪˈmɑːkəbl/", wordForm: "adj", meaningEn: "unusual or impressive", meaningVi: "đáng chú ý" },
-        { word: "tough", ipa: "/tʌf/", wordForm: "adj", meaningEn: "strong and durable", meaningVi: "bền, cứng", example: "She is a tough girl" },
-        { word: "elastic", ipa: "/ɪˈlæstɪk/", wordForm: "adj", meaningEn: "able to stretch and return", meaningVi: "đàn hồi", relatedForms: "elasticity (n)" },
-        { word: "buoyant", ipa: "/ˈbɔɪənt/", wordForm: "adj", meaningEn: "able to float / floatation", meaningVi: "nổi" },
-        { word: "fire-resistant", ipa: "/ˈfaɪə rɪˌzɪstənt/", wordForm: "adj", meaningEn: "resistant to fire", meaningVi: "chống cháy" },
-        { word: "millennia", ipa: "/mɪˈleniə/", wordForm: "n (pl)", meaningEn: "thousands of years", meaningVi: "hàng thiên niên kỷ" },
-      ],
+async function seedGrammarLesson(
+  levelId: string,
+  order: number,
+  data: (typeof CURRICULUM)[number]["grammar"][number],
+) {
+  const lesson = await prisma.lesson.upsert({
+    where: { track_levelId_order: { track: "grammar", levelId, order } },
+    update: {
+      title: data.title,
+      summary: data.summary,
+      xp: 10,
+      estimatedMinutes: 12,
     },
-  ],
-};
-
-async function seedFallback() {
-  const doc = await prisma.documentSet.upsert({
-    where: { sourceUrl: "seed://fallback" },
-    update: { name: FALLBACK_DATA.name },
-    create: { name: FALLBACK_DATA.name, sourceUrl: "seed://fallback" },
+    create: {
+      track: "grammar",
+      levelId,
+      order,
+      title: data.title,
+      summary: data.summary,
+      xp: 10,
+      estimatedMinutes: 12,
+    },
   });
 
-  let wordCount = 0;
-  for (const [i, cat] of FALLBACK_DATA.categories.entries()) {
-    const slug = slugify(cat.name);
-    const category = await prisma.category.upsert({
-      where: { documentSetId_slug: { documentSetId: doc.id, slug } },
-      update: { name: cat.name, order: i },
-      create: { name: cat.name, slug, documentSetId: doc.id, order: i },
-    });
+  await prisma.lessonSection.deleteMany({ where: { lessonId: lesson.id } });
+  await prisma.question.deleteMany({ where: { lessonId: lesson.id } });
 
-    for (const w of cat.words) {
-      const existing = await prisma.word.findFirst({
-        where: { categoryId: category.id, word: w.word },
-      });
-      if (existing) {
-        await prisma.word.update({ where: { id: existing.id }, data: w });
-      } else {
-        await prisma.word.create({ data: { ...w, categoryId: category.id } });
-      }
-      wordCount += 1;
-    }
+  for (const [i, section] of data.sections.entries()) {
+    await prisma.lessonSection.create({
+      data: {
+        lessonId: lesson.id,
+        title: section.title,
+        body: section.body,
+        remember: section.remember,
+        order: i,
+      },
+    });
   }
 
-  console.log(`Seeded ${wordCount} fallback words`);
+  for (const [i, question] of data.questions.entries()) {
+    await prisma.question.create({
+      data: {
+        lessonId: lesson.id,
+        prompt: question.prompt,
+        explanation: question.explanation,
+        order: i,
+        choices: {
+          create: question.choices.map((choice, choiceIndex) => ({
+            label: choice.label,
+            isCorrect: Boolean(choice.correct),
+            order: choiceIndex,
+          })),
+        },
+      },
+    });
+  }
+
+  return { lesson, sections: data.sections.length, questions: data.questions.length };
+}
+
+async function seedVocabTopic(
+  levelId: string,
+  topicOrder: number,
+  data: (typeof CURRICULUM)[number]["vocab"][number],
+) {
+  const topic = await prisma.topic.upsert({
+    where: { levelId_slug: { levelId, slug: data.slug } },
+    update: {
+      name: data.name,
+      description: data.description,
+      icon: data.icon,
+      order: topicOrder,
+    },
+    create: {
+      levelId,
+      name: data.name,
+      slug: data.slug,
+      description: data.description,
+      icon: data.icon,
+      order: topicOrder,
+    },
+  });
+
+  const lesson = await prisma.lesson.upsert({
+    where: { track_levelId_order: { track: "vocabulary", levelId, order: topicOrder + 1 } },
+    update: {
+      title: data.lesson.title,
+      summary: data.lesson.summary,
+      topicId: topic.id,
+      xp: 10,
+      estimatedMinutes: 10,
+    },
+    create: {
+      track: "vocabulary",
+      levelId,
+      topicId: topic.id,
+      order: topicOrder + 1,
+      title: data.lesson.title,
+      summary: data.lesson.summary,
+      xp: 10,
+      estimatedMinutes: 10,
+    },
+  });
+
+  await prisma.lessonSection.deleteMany({ where: { lessonId: lesson.id } });
+  await prisma.vocabEntry.deleteMany({ where: { lessonId: lesson.id } });
+  await prisma.question.deleteMany({ where: { lessonId: lesson.id } });
+
+  for (const [i, section] of data.lesson.sections.entries()) {
+    await prisma.lessonSection.create({
+      data: {
+        lessonId: lesson.id,
+        title: section.title,
+        body: section.body,
+        remember: section.remember,
+        order: i,
+      },
+    });
+  }
+
+  for (const [i, word] of data.lesson.words.entries()) {
+    await prisma.vocabEntry.create({
+      data: {
+        lessonId: lesson.id,
+        word: word.word,
+        ipa: word.ipa,
+        wordForm: word.wordForm,
+        meaningVi: word.meaningVi,
+        meaningEn: word.meaningEn,
+        example: word.example,
+        order: i,
+      },
+    });
+  }
+
+  const questions = vocabularyQuestions(data.lesson.words);
+  for (const [i, question] of questions.entries()) {
+    await prisma.question.create({
+      data: {
+        lessonId: lesson.id,
+        prompt: question.prompt,
+        explanation: question.explanation,
+        order: i,
+        choices: {
+          create: question.choices.map((choice, choiceIndex) => ({
+            label: choice.label,
+            isCorrect: Boolean(choice.correct),
+            order: choiceIndex,
+          })),
+        },
+      },
+    });
+  }
+
+  return { topic, lesson, words: data.lesson.words.length, questions: questions.length };
 }
 
 async function main() {
-  const email = "demo@eng-growth.app";
   const passwordHash = await bcrypt.hash("demo1234", 10);
-
   await prisma.user.upsert({
-    where: { email },
+    where: { email: "demo@eng-growth.app" },
     update: {},
     create: {
-      email,
+      email: "demo@eng-growth.app",
       passwordHash,
       name: "Demo User",
-      dailyGoal: 10,
     },
   });
 
-  console.log("Demo user: demo@eng-growth.app / demo1234");
+  let grammarCount = 0;
+  let grammarQuestions = 0;
+  let vocabCount = 0;
+  let vocabQuestions = 0;
+  let wordCount = 0;
 
-  try {
-    const result = await confirmImport(SAMPLE_DOC_URL);
-    console.log(`Imported ${result.wordCount} words in ${result.categoryCount} categories`);
-  } catch (error) {
-    console.warn("Sample doc import skipped:", error instanceof Error ? error.message : error);
-    await seedFallback();
+  for (const [levelIndex, levelData] of CURRICULUM.entries()) {
+    const level = await prisma.level.upsert({
+      where: { code: levelData.code },
+      update: {
+        name: levelData.name,
+        tagline: levelData.tagline,
+        description: levelData.description,
+        order: levelIndex,
+      },
+      create: {
+        code: levelData.code,
+        name: levelData.name,
+        tagline: levelData.tagline,
+        description: levelData.description,
+        order: levelIndex,
+      },
+    });
+
+    for (const [i, lessonData] of levelData.grammar.entries()) {
+      const result = await seedGrammarLesson(level.id, i + 1, lessonData);
+      grammarCount += 1;
+      grammarQuestions += result.questions;
+    }
+
+    for (const [i, topicData] of levelData.vocab.entries()) {
+      const result = await seedVocabTopic(level.id, i + 1, topicData);
+      vocabCount += 1;
+      vocabQuestions += result.questions;
+      wordCount += result.words;
+    }
   }
+
+  console.log(`Seeded ${CURRICULUM.length} CEFR levels`);
+  console.log(`Grammar: ${grammarCount} lessons / ${grammarQuestions} questions`);
+  console.log(`Vocabulary: ${vocabCount} topics & lessons / ${wordCount} words / ${vocabQuestions} questions`);
+  console.log("Demo user: demo@eng-growth.app / demo1234");
 }
 
 main()
-  .catch(console.error)
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  })
   .finally(() => prisma.$disconnect());

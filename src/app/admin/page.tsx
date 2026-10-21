@@ -1,140 +1,184 @@
-"use client";
-
-import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { AdminSideNav } from "@/components/layout/AdminSideNav";
-import { WordTable, type WordRow } from "@/components/admin/WordTable";
-import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
+import { getAdminLevels } from "@/lib/learning";
+import { LEVEL_META, type LevelCode } from "@/lib/curriculum";
+import { SiteHeader } from "@/components/layout/SiteHeader";
+import { SiteFooter } from "@/components/layout/SiteFooter";
+import { DeleteLessonButton } from "@/components/admin/DeleteLessonButton";
 
-export default function AdminPage() {
-  const [words, setWords] = useState<WordRow[]>([]);
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [editing, setEditing] = useState<WordRow | null>(null);
-  const [editForm, setEditForm] = useState({
-    word: "",
-    ipa: "",
-    wordForm: "",
-    meaningEn: "",
-    meaningVi: "",
-  });
+export default async function AdminPage() {
+  const levels = await getAdminLevels();
 
-  const loadWords = useCallback(async () => {
-    const res = await fetch(
-      `/api/words?search=${encodeURIComponent(search)}&page=${page}&limit=20`,
-    );
-    if (res.ok) {
-      const data = await res.json();
-      setWords(data.words);
-      setTotalPages(data.totalPages);
-      setTotal(data.total);
-    }
-  }, [search, page]);
-
-  useEffect(() => {
-    const timer = setTimeout(loadWords, 300);
-    return () => clearTimeout(timer);
-  }, [loadWords]);
-
-  async function handleDelete(id: string) {
-    await fetch(`/api/words?id=${id}`, { method: "DELETE" });
-    await loadWords();
-  }
-
-  function handleEdit(word: WordRow) {
-    setEditing(word);
-    setEditForm({
-      word: word.word,
-      ipa: word.ipa ?? "",
-      wordForm: word.wordForm ?? "",
-      meaningEn: word.meaningEn,
-      meaningVi: word.meaningVi,
-    });
-  }
-
-  async function saveEdit() {
-    if (!editing) return;
-    await fetch("/api/words", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: editing.id, ...editForm }),
-    });
-    setEditing(null);
-    await loadWords();
-  }
+  const lessonCount = levels.reduce((sum, level) => sum + level.lessons.length, 0);
+  const questionCount = levels.reduce(
+    (sum, level) =>
+      sum + level.lessons.reduce((lessonSum, lesson) => lessonSum + lesson._count.questions, 0),
+    0,
+  );
+  const wordCount = levels.reduce(
+    (sum, level) =>
+      sum + level.lessons.reduce((lessonSum, lesson) => lessonSum + lesson._count.vocab, 0),
+    0,
+  );
 
   return (
-    <div className="flex min-h-screen bg-surface">
-      <AdminSideNav active="words" />
-      <main className="ml-0 w-full max-w-[var(--spacing-container-max)] flex-1 p-gutter pt-lg pb-xl md:ml-64">
-        <header className="mb-lg flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
-          <div>
-            <h2 className="mb-2 text-2xl font-semibold text-on-background">Vocabulary Data</h2>
-            <p className="text-on-surface-variant">Manage, import, and edit your learning content repository.</p>
-          </div>
-          <div className="flex w-full flex-col gap-4 sm:w-auto sm:flex-row">
-            <Link href="/admin/import">
-              <Button variant="secondary" className="w-full sm:w-auto">
-                <span className="material-symbols-outlined">upload_file</span>
-                Import Google Doc
-              </Button>
+    <div className="flex min-h-screen flex-col">
+      <SiteHeader active="admin" />
+      <main className="flex-1">
+        <section className="mx-auto w-full max-w-[1120px] px-5 pb-6 pt-10 md:px-8">
+          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+            <div>
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-brand/15 bg-brand-soft/70 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-brand">
+                <span className="material-symbols-outlined text-[14px]">admin_panel_settings</span>
+                Quản trị nội dung
+              </div>
+              <h1 className="display text-3xl text-ink md:text-4xl">Bài học & lộ trình</h1>
+              <p className="mt-2 max-w-2xl text-sm text-muted">
+                Thêm, sửa hoặc xoá bài học. Với bài từ vựng, danh sách từ sẽ tự sinh câu hỏi kiểm
+                tra.
+              </p>
+            </div>
+            <Link
+              href="/roadmap"
+              className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-5 py-2.5 text-sm font-semibold text-ink hover:border-brand/30 hover:text-brand"
+            >
+              <span className="material-symbols-outlined text-[18px]">visibility</span>
+              Xem lộ trình
             </Link>
           </div>
-        </header>
 
-        <div className="relative mb-md max-w-md">
-          <span className="material-symbols-outlined absolute top-1/2 left-3 -translate-y-1/2 text-on-surface-variant">
-            search
-          </span>
-          <Input
-            className="pl-10"
-            placeholder="Search vocabulary..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-          />
-        </div>
-
-        <WordTable words={words} onDelete={handleDelete} onEdit={handleEdit} />
-
-        <div className="mt-4 flex items-center justify-between">
-          <span className="text-xs font-semibold text-on-surface-variant">
-            Showing page {page} of {totalPages} ({total} words)
-          </span>
-          <div className="flex gap-2">
-            <Button variant="outline" className="px-3 py-1.5 text-xs" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-              Previous
-            </Button>
-            <Button variant="outline" className="px-3 py-1.5 text-xs" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
-              Next
-            </Button>
-          </div>
-        </div>
-
-        {editing && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="w-full max-w-md rounded-xl bg-white p-6 elevation-2">
-              <h3 className="mb-4 text-lg font-semibold">Edit Word</h3>
-              <div className="space-y-4">
-                <Input label="Word" value={editForm.word} onChange={(e) => setEditForm({ ...editForm, word: e.target.value })} />
-                <Input label="IPA" value={editForm.ipa} onChange={(e) => setEditForm({ ...editForm, ipa: e.target.value })} />
-                <Input label="Word Form" value={editForm.wordForm} onChange={(e) => setEditForm({ ...editForm, wordForm: e.target.value })} />
-                <Input label="English Meaning" value={editForm.meaningEn} onChange={(e) => setEditForm({ ...editForm, meaningEn: e.target.value })} />
-                <Input label="Nghĩa tiếng Việt" value={editForm.meaningVi} onChange={(e) => setEditForm({ ...editForm, meaningVi: e.target.value })} />
+          <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+            {[
+              { label: "Cấp độ", value: levels.length, icon: "stairs" },
+              { label: "Bài học", value: lessonCount, icon: "menu_book" },
+              { label: "Câu hỏi", value: questionCount, icon: "quiz" },
+              { label: "Từ vựng", value: wordCount, icon: "auto_stories" },
+            ].map((stat) => (
+              <div key={stat.label} className="card p-4">
+                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
+                  <span className="material-symbols-outlined text-[15px] text-brand">{stat.icon}</span>
+                  {stat.label}
+                </div>
+                <div className="display mt-1.5 text-2xl text-ink">{stat.value}</div>
               </div>
-              <div className="mt-6 flex gap-2">
-                <Button className="flex-1" onClick={saveEdit}>Save</Button>
-                <Button variant="outline" className="flex-1" onClick={() => setEditing(null)}>Cancel</Button>
-              </div>
-            </div>
+            ))}
           </div>
-        )}
+        </section>
+
+        <section className="mx-auto w-full max-w-[1120px] px-5 pb-20 md:px-8">
+          <div className="space-y-6">
+            {levels.map((level) => {
+              const meta = LEVEL_META[level.code as LevelCode];
+              const grammar = level.lessons.filter((lesson) => lesson.track === "grammar");
+              const vocabulary = level.lessons.filter((lesson) => lesson.track === "vocabulary");
+
+              return (
+                <div key={level.id} className="card overflow-hidden">
+                  <div className="flex flex-col gap-3 border-b border-line bg-surface-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between md:px-6">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="display flex h-11 w-11 items-center justify-center rounded-xl text-base font-bold"
+                        style={{ background: meta.soft, color: meta.color }}
+                      >
+                        {level.code}
+                      </div>
+                      <div>
+                        <h2 className="text-base font-bold text-ink">
+                          {meta.name}
+                          <span className="ml-2 text-xs font-normal text-muted">{meta.tagline}</span>
+                        </h2>
+                        <p className="text-[11px] text-muted">
+                          {grammar.length} bài ngữ pháp · {vocabulary.length} bài từ vựng
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Link
+                        href={`/admin/lessons/new?level=${level.id}&track=grammar`}
+                        className="rounded-full bg-brand px-3.5 py-1.5 text-[11px] font-semibold text-white hover:bg-brand-dark"
+                      >
+                        + Ngữ pháp
+                      </Link>
+                      <Link
+                        href={`/admin/lessons/new?level=${level.id}&track=vocabulary`}
+                        className="rounded-full bg-mint px-3.5 py-1.5 text-[11px] font-semibold text-brand-dark hover:brightness-95"
+                      >
+                        + Từ vựng
+                      </Link>
+                    </div>
+                  </div>
+
+                  <div className="divide-y divide-line/70">
+                    {level.lessons.length === 0 ? (
+                      <p className="px-4 py-5 text-xs text-muted md:px-6">
+                        Chưa có bài học nào ở cấp độ này.
+                      </p>
+                    ) : (
+                      level.lessons.map((lesson) => (
+                        <div
+                          key={lesson.id}
+                          className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between md:px-6"
+                        >
+                          <div className="flex min-w-0 items-start gap-3">
+                            <span
+                              className={`mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-[10px] font-bold ${
+                                lesson.track === "grammar"
+                                  ? "bg-brand-soft text-brand"
+                                  : "bg-surface-muted text-muted"
+                              }`}
+                            >
+                              {String(lesson.order).padStart(2, "0")}
+                            </span>
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="truncate text-sm font-semibold text-ink">
+                                  {lesson.title}
+                                </span>
+                                <span className="rounded bg-surface-muted px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-muted">
+                                  {lesson.track === "grammar" ? "Ngữ pháp" : "Từ vựng"}
+                                </span>
+                                {lesson.topic ? (
+                                  <span className="text-[10px] text-muted">{lesson.topic.name}</span>
+                                ) : null}
+                              </div>
+                              <div className="mt-0.5 text-[10px] text-muted">
+                                {lesson._count.questions} câu hỏi · {lesson._count.vocab} từ ·{" "}
+                                {lesson.xp} XP
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex flex-shrink-0 items-center gap-2 pl-10 sm:pl-0">
+                            <Link
+                              href={`/admin/lessons/${lesson.id}`}
+                              className="rounded-full border border-line px-3 py-1 text-[11px] font-semibold text-ink hover:border-brand/30 hover:text-brand"
+                            >
+                              Sửa
+                            </Link>
+                            <Link
+                              href={`/lesson/${lesson.id}`}
+                              className="rounded-full px-2.5 py-1 text-[11px] font-semibold text-muted hover:text-brand"
+                            >
+                              Xem
+                            </Link>
+                            <DeleteLessonButton lessonId={lesson.id} title={lesson.title} />
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-8 rounded-xl border border-line bg-surface-muted/40 p-4 text-xs leading-relaxed text-muted">
+            <span className="font-semibold text-ink">Mẹo:</span> Nội dung bài học hỗ trợ dòng bắt
+            đầu bằng <code className="rounded bg-surface px-1">-</code> để tạo gạch đầu dòng và{" "}
+            <code className="rounded bg-surface px-1">**chữ**</code> để in đậm. Với bài từ vựng,
+            chỉ cần nhập danh sách từ — hệ thống tự tạo câu hỏi trắc nghiệm.
+          </div>
+        </section>
       </main>
+      <SiteFooter />
     </div>
   );
 }

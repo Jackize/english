@@ -1,16 +1,25 @@
 import { PrismaClient } from "@/generated/prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import path from "path";
+import { PrismaPg } from "@prisma/adapter-pg";
 
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+
+function getConnectionString() {
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error(
+      "Chưa cấu hình DATABASE_URL. Hãy thêm chuỗi kết nối PostgreSQL/Supabase vào .env.",
+    );
+  }
+
+  // Supabase yêu cầu SSL. Tự bổ sung nếu chuỗi kết nối chưa khai báo.
+  const isLocal = /localhost|127\.0\.0\.1/.test(url);
+  if (isLocal || /[?&]sslmode=/.test(url)) return url;
+
+  return `${url}${url.includes("?") ? "&" : "?"}sslmode=require`;
+}
 
 function createPrismaClient() {
-  const dbUrl = process.env.DATABASE_URL ?? "file:./dev.db";
-  const filePath = dbUrl.replace(/^file:/, "");
-  const absolutePath = path.isAbsolute(filePath)
-    ? filePath
-    : path.join(process.cwd(), filePath);
-  const adapter = new PrismaBetterSqlite3({ url: absolutePath });
+  const adapter = new PrismaPg({ connectionString: getConnectionString() });
   return new PrismaClient({ adapter });
 }
 

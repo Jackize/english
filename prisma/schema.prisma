@@ -4,96 +4,165 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 model User {
-  id            String             @id @default(cuid())
-  email         String             @unique
+  id            String           @id @default(cuid())
+  email         String           @unique
   passwordHash  String?
   name          String?
-  dailyGoal     Int                @default(10)
-  streak        Int                @default(0)
+  xp            Int              @default(0)
+  streak        Int              @default(0)
   lastStudyDate DateTime?
-  createdAt     DateTime           @default(now())
-  wordProgress  UserWordProgress[]
-  studySessions StudySession[]
+  createdAt     DateTime         @default(now())
+  progress      LessonProgress[]
+  attempts      QuizAttempt[]
+  reviews       ReviewItem[]
 }
 
-model DocumentSet {
-  id         String     @id @default(cuid())
-  name       String
-  sourceUrl  String?    @unique
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
-  categories Category[]
+model Level {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  tagline     String?
+  description String?
+  order       Int
+  createdAt   DateTime @default(now())
+  lessons     Lesson[]
+  topics      Topic[]
 }
 
-model Category {
-  id            String      @id @default(cuid())
-  name          String
-  slug          String
-  documentSetId String
-  order         Int         @default(0)
-  documentSet   DocumentSet @relation(fields: [documentSetId], references: [id], onDelete: Cascade)
-  words         Word[]
+model Topic {
+  id          String   @id @default(cuid())
+  levelId     String
+  name        String
+  slug        String
+  description String?
+  icon        String   @default("menu_book")
+  order       Int      @default(0)
+  level       Level    @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  lessons     Lesson[]
 
-  @@unique([documentSetId, slug])
+  @@unique([levelId, slug])
 }
 
-model Word {
-  id           String             @id @default(cuid())
-  word         String
-  ipa          String?
-  wordForm     String?
-  meaningEn    String
-  meaningVi    String
-  example      String?
-  relatedForms String?
-  archived     Boolean            @default(false)
-  categoryId   String
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  category     Category           @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  progress     UserWordProgress[]
+model Lesson {
+  id               String           @id @default(cuid())
+  levelId          String
+  topicId          String?
+  track            String
+  title            String
+  summary          String?
+  order            Int              @default(0)
+  xp               Int              @default(10)
+  estimatedMinutes Int              @default(10)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  level            Level            @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  topic            Topic?           @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  sections         LessonSection[]
+  vocab            VocabEntry[]
+  questions        Question[]
+  progress         LessonProgress[]
+  attempts         QuizAttempt[]
 
-  @@index([categoryId])
-  @@index([word])
+  @@unique([track, levelId, order])
+  @@index([track, levelId])
+  @@index([topicId])
 }
 
-model UserWordProgress {
-  id           String    @id @default(cuid())
-  userId       String
-  wordId       String
-  status       String    @default("new")
-  easeFactor   Float     @default(2.5)
-  interval     Int       @default(0)
-  nextReviewAt DateTime?
-  reviewCount  Int       @default(0)
-  lastResult   String?
-  lastReviewed DateTime?
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  word         Word      @relation(fields: [wordId], references: [id], onDelete: Cascade)
+model LessonSection {
+  id       String  @id @default(cuid())
+  lessonId String
+  title    String
+  body     String
+  remember String?
+  order    Int     @default(0)
+  lesson   Lesson  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, wordId])
-  @@index([userId, nextReviewAt])
+  @@index([lessonId])
 }
 
-model StudySession {
+model VocabEntry {
+  id        String  @id @default(cuid())
+  lessonId  String
+  word      String
+  ipa       String?
+  wordForm  String?
+  meaningVi String
+  meaningEn String?
+  example   String?
+  order     Int     @default(0)
+  lesson    Lesson  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId])
+}
+
+model Question {
+  id          String           @id @default(cuid())
+  lessonId    String
+  prompt      String
+  explanation String?
+  order       Int              @default(0)
+  lesson      Lesson           @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  choices     QuestionChoice[]
+  reviews     ReviewItem[]
+
+  @@index([lessonId])
+}
+
+model QuestionChoice {
+  id         String   @id @default(cuid())
+  questionId String
+  label      String
+  isCorrect  Boolean  @default(false)
+  order      Int      @default(0)
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId])
+}
+
+model LessonProgress {
+  id         String   @id @default(cuid())
+  userId     String
+  lessonId   String
+  theoryDone Boolean  @default(false)
+  bestScore  Int      @default(0)
+  quizTotal  Int      @default(0)
+  attempts   Int      @default(0)
+  completed  Boolean  @default(false)
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson     Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([userId, completed])
+}
+
+model QuizAttempt {
   id        String   @id @default(cuid())
   userId    String
-  wordsDone Int      @default(0)
+  lessonId  String
+  score     Int
+  total     Int
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
 }
 
-model ImportLog {
-  id        String   @id @default(cuid())
-  sourceUrl String
-  wordCount Int      @default(0)
-  status    String
-  message   String?
-  createdAt DateTime @default(now())
+model ReviewItem {
+  id          String   @id @default(cuid())
+  userId      String
+  questionId  String
+  wrongCount  Int      @default(1)
+  lastWrongAt DateTime @default(now())
+  resolved    Boolean  @default(false)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, questionId])
+  @@index([userId, resolved])
 }

@@ -10,6 +10,9 @@ WORKDIR /app
 
 # Copy dependency files trước để cache layer npm ci
 COPY package.json package-lock.json ./
+# Prisma cần schema + config ngay từ postinstall (prisma generate)
+COPY prisma ./prisma
+COPY prisma.config.ts ./
 RUN npm ci
 
 # Copy source và build production

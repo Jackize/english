@@ -17,7 +17,9 @@ RUN npm ci
 
 # Copy source và build production
 COPY . .
-RUN npm run build        # = prisma generate && next build
+# Build cần DATABASE_URL để Next thu thập page data (Prisma khởi tạo lúc import)
+# Truyền qua BuildKit secret → không lưu trong image/history
+RUN --mount=type=secret,id=database_url,env=DATABASE_URL npm run build
 
 # ---------- Stage 2: Runtime ----------
 FROM node:22-slim

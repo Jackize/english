@@ -43,6 +43,13 @@ export default async function GrammarPage({
                 {overview.counts.grammar.total} bài học xếp theo sáu bậc CEFR. Học kiến thức trước,
                 sau đó làm bài kiểm tra để chắc rằng bạn đã nắm chắc.
               </p>
+              <Link
+                href={selected ? `/daily?level=${selected}` : "/daily"}
+                className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-brand hover:underline"
+              >
+                <span className="material-symbols-outlined text-[15px]">calendar_month</span>
+                Học theo kế hoạch ngày →
+              </Link>
             </div>
 
             <div className="w-full max-w-xs rounded-xl border border-line bg-surface p-4">

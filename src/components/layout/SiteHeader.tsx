@@ -2,10 +2,18 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { SignOutButton } from "./SignOutButton";
 
-export type NavKey = "home" | "roadmap" | "grammar" | "vocabulary" | "review" | "admin";
+export type NavKey =
+  | "home"
+  | "daily"
+  | "roadmap"
+  | "grammar"
+  | "vocabulary"
+  | "review"
+  | "admin";
 
 const links: { href: string; key: NavKey; label: string }[] = [
   { href: "/", key: "home", label: "Trang chủ" },
+  { href: "/daily", key: "daily", label: "Theo ngày" },
   { href: "/roadmap", key: "roadmap", label: "Lộ trình" },
   { href: "/grammar", key: "grammar", label: "Ngữ pháp" },
   { href: "/vocabulary", key: "vocabulary", label: "Từ vựng" },

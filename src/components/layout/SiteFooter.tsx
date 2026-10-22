@@ -16,8 +16,8 @@ export async function SiteFooter() {
             </span>
           </Link>
           <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted">
-            Học theo từng chặng, nhớ theo từng bài. Ngữ pháp và từ vựng nằm trong hai lộ trình
-            riêng, có kiểm tra và ôn lại câu sai.
+            Học theo từng chặng, nhớ theo từng bài. Kế hoạch theo ngày chia nhỏ ngữ pháp và từ
+            vựng thành từng buổi học, có kiểm tra và ôn lại câu sai.
           </p>
         </div>
 
@@ -26,6 +26,9 @@ export async function SiteFooter() {
             <div className="text-xs font-bold uppercase tracking-[0.16em] text-muted">Lộ trình</div>
             <Link href="/roadmap" className="block text-ink hover:text-brand">
               Toàn bộ A1 → C2
+            </Link>
+            <Link href="/daily" className="block text-ink hover:text-brand">
+              Học theo ngày
             </Link>
             <Link href="/grammar" className="block text-ink hover:text-brand">
               Ngữ pháp

@@ -42,6 +42,13 @@ export default async function VocabularyPage({
                 {overview.counts.vocabulary.topics} chủ đề, {overview.counts.vocabulary.total} bài
                 học. Mỗi bài gồm danh sách từ, phiên âm, nghĩa tiếng Việt, ví dụ và bài kiểm tra.
               </p>
+              <Link
+                href={selected ? `/daily?level=${selected}` : "/daily"}
+                className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-brand hover:underline"
+              >
+                <span className="material-symbols-outlined text-[15px]">calendar_month</span>
+                Học theo kế hoạch ngày →
+              </Link>
             </div>
 
             <div className="w-full max-w-xs rounded-xl border border-line bg-surface p-4">

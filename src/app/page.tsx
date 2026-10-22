@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
+import { getDailyPlan } from "@/lib/daily-plan";
 import { getOverview } from "@/lib/learning";
 import { LEVEL_META, TRACK_META } from "@/lib/curriculum";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
+import { DailyTaskRow } from "@/components/learning/DailyTaskRow";
 import { PlantGrowth } from "@/components/learning/PlantGrowth";
 import { ProgressBar, LevelBadge } from "@/components/ui/Progress";
 
@@ -11,6 +13,8 @@ export default async function HomePage() {
   const session = await auth();
   const overview = await getOverview(session?.user?.id);
   const next = overview.nextLesson;
+  const dailyPlan = getDailyPlan(overview);
+  const currentDay = dailyPlan?.currentDay ?? null;
   const totalQuestions = overview.levels.reduce(
     (sum, level) =>
       sum +
@@ -40,16 +44,26 @@ export default async function HomePage() {
           </h1>
 
           <p className="mx-auto mt-6 max-w-2xl text-[15px] leading-relaxed text-muted md:text-base">
-            Từ vựng và ngữ pháp nằm trong hai lộ trình riêng. Mỗi bài gồm phần học và phần kiểm
-            tra; câu trả lời chưa đúng được lưu lại để ôn tập.
+            Từ vựng và ngữ pháp nằm trong hai lộ trình riêng. Mục tiêu hôm nay chia nhỏ lộ trình
+            thành từng buổi học ngắn; câu trả lời chưa đúng được lưu lại để ôn tập.
           </p>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
-              href={next ? `/lesson/${next.id}` : "/roadmap"}
+              href={
+                dailyPlan && currentDay
+                  ? `/daily?level=${dailyPlan.levelCode}`
+                  : next
+                    ? `/lesson/${next.id}`
+                    : "/roadmap"
+              }
               className="btn-primary inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-sm font-semibold"
             >
-              {next ? "Học bài tiếp theo" : "Xem lộ trình"}
+              {dailyPlan && currentDay
+                ? "Mục tiêu hôm nay"
+                : next
+                  ? "Học bài tiếp theo"
+                  : "Xem lộ trình"}
               <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
             </Link>
             <Link
@@ -82,120 +96,171 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Next lesson */}
-        <section className="mx-auto w-full max-w-[1120px] px-5 md:px-8">
-          <div className="card-elevated overflow-hidden">
-            <div className="flex flex-col gap-6 p-6 md:p-8">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-2.5">
-                  {next ? (
-                    <>
-                      <LevelBadge code={next.levelCode} />
-                      <span className="rounded-md bg-surface-muted px-2 py-0.5 text-[11px] font-semibold text-muted">
-                        {next.track === "grammar" ? "Ngữ pháp" : "Từ vựng"}
-                      </span>
-                      <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">
-                        Bài học tiếp theo
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">
-                      Lộ trình của bạn
-                    </span>
-                  )}
+        {/* Daily target */}
+        {dailyPlan && currentDay ? (
+          <section className="mx-auto w-full max-w-[1120px] px-5 pb-6 md:px-8">
+            <div className="card overflow-hidden border-brand/20 bg-brand-soft/20">
+              <div className="flex flex-col gap-4 border-b border-brand/10 p-5 sm:flex-row sm:items-center sm:justify-between md:p-6">
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand">
+                    Kế hoạch theo ngày · {dailyPlan.levelCode} · Ngày {currentDay.day}/
+                    {dailyPlan.totalDays}
+                  </div>
+                  <h2 className="display mt-1 text-2xl text-ink md:text-3xl">Mục tiêu hôm nay</h2>
+                  <p className="mt-1 text-xs text-muted">
+                    {currentDay.tasks.length} bài · khoảng {currentDay.estimatedMinutes} phút · +
+                    {currentDay.xp} XP
+                  </p>
                 </div>
-                <span className="text-xs text-muted">
-                  <span className="font-semibold text-ink">{overview.completedLessons}</span>/
-                  {overview.totalLessons} bài đã hoàn thành
-                </span>
+                <Link
+                  href={`/daily?level=${dailyPlan.levelCode}`}
+                  className="inline-flex flex-shrink-0 items-center gap-1.5 text-sm font-semibold text-brand hover:underline"
+                >
+                  Xem cả kế hoạch
+                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                </Link>
               </div>
+              <div className="grid gap-2 p-4 sm:grid-cols-2 md:p-5">
+                {currentDay.tasks.map((task) => (
+                  <DailyTaskRow key={task.lesson.id} task={task} />
+                ))}
+              </div>
+              <div className="border-t border-brand/10 bg-surface/60 px-5 py-3 text-xs text-muted md:px-6">
+                {session?.user ? (
+                  <span>
+                    Chào {session.user.name ?? session.user.email} · Chuỗi học{" "}
+                    <span className="font-semibold text-ink">{overview.streak} ngày</span> ·{" "}
+                    <span className="font-semibold text-ink">{overview.xp} XP</span>
+                  </span>
+                ) : (
+                  <span>
+                    <Link href="/login" className="font-semibold text-brand hover:underline">
+                      Đăng nhập
+                    </Link>{" "}
+                    để lưu tiến độ học của bạn.
+                  </span>
+                )}
+              </div>
+            </div>
+          </section>
+        ) : null}
 
-              {next ? (
-                <>
-                  <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
-                    <div>
-                      <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand">
-                        {next.track === "grammar" ? "Lộ trình ngữ pháp" : "Lộ trình từ vựng"} ·{" "}
-                        {next.levelCode} {next.levelName}
+        {/* Next lesson (fallback khi đã hoàn thành kế hoạch) */}
+        {!dailyPlan || !currentDay ? (
+          <section className="mx-auto w-full max-w-[1120px] px-5 md:px-8">
+            <div className="card-elevated overflow-hidden">
+              <div className="flex flex-col gap-6 p-6 md:p-8">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    {next ? (
+                      <>
+                        <LevelBadge code={next.levelCode} />
+                        <span className="rounded-md bg-surface-muted px-2 py-0.5 text-[11px] font-semibold text-muted">
+                          {next.track === "grammar" ? "Ngữ pháp" : "Từ vựng"}
+                        </span>
+                        <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">
+                          Bài học tiếp theo
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">
+                        Lộ trình của bạn
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs text-muted">
+                    <span className="font-semibold text-ink">{overview.completedLessons}</span>/
+                    {overview.totalLessons} bài đã hoàn thành
+                  </span>
+                </div>
+
+                {next ? (
+                  <>
+                    <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+                      <div>
+                        <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand">
+                          {next.track === "grammar" ? "Lộ trình ngữ pháp" : "Lộ trình từ vựng"} ·{" "}
+                          {next.levelCode} {next.levelName}
+                        </div>
+                        <h2 className="display text-3xl text-ink md:text-[34px]">{next.title}</h2>
+                        <p className="mt-2 max-w-xl text-sm text-muted">{next.summary}</p>
                       </div>
-                      <h2 className="display text-3xl text-ink md:text-[34px]">{next.title}</h2>
-                      <p className="mt-2 max-w-xl text-sm text-muted">{next.summary}</p>
+                      <Link
+                        href={`/lesson/${next.id}`}
+                        className="btn-primary inline-flex flex-shrink-0 items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold"
+                      >
+                        Học ngay
+                        <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                      </Link>
                     </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="flex items-center gap-3 rounded-xl border border-line bg-surface-muted/40 px-4 py-3">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-soft text-xs font-bold text-brand">
+                          01
+                        </span>
+                        <div className="flex-1">
+                          <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-brand">
+                            {next.theoryDone ? "Đã học" : "Bắt đầu"}
+                          </div>
+                          <div className="text-sm font-semibold text-ink">Học kiến thức</div>
+                        </div>
+                        {next.theoryDone ? (
+                          <span className="material-symbols-outlined text-[20px] text-brand">
+                            check_circle
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="flex items-center gap-3 rounded-xl border border-line px-4 py-3">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-muted text-xs font-bold text-muted">
+                          02
+                        </span>
+                        <div className="flex-1">
+                          <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted">
+                            {next.bestScore > 0 ? `Điểm ${next.bestScore}/${next.quizTotal}` : "Tiếp theo"}
+                          </div>
+                          <div className="text-sm font-semibold text-ink">Kiểm tra</div>
+                        </div>
+                        <span className="text-xs text-muted">{next.questionCount} câu</span>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="py-6 text-center">
+                    <div className="text-4xl">🌳</div>
+                    <h2 className="display mt-3 text-3xl text-ink">Bạn đã hoàn thành toàn bộ lộ trình!</h2>
+                    <p className="mt-2 text-sm text-muted">
+                      Hãy quay lại ôn tập những câu sai để giữ kiến thức thật chắc.
+                    </p>
                     <Link
-                      href={`/lesson/${next.id}`}
-                      className="btn-primary inline-flex flex-shrink-0 items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold"
+                      href="/review"
+                      className="btn-primary mt-5 inline-flex rounded-full px-6 py-3 text-sm font-semibold"
                     >
-                      Học ngay
-                      <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                      Ôn lại câu sai
                     </Link>
                   </div>
+                )}
+              </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="flex items-center gap-3 rounded-xl border border-line bg-surface-muted/40 px-4 py-3">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-soft text-xs font-bold text-brand">
-                        01
-                      </span>
-                      <div className="flex-1">
-                        <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-brand">
-                          {next.theoryDone ? "Đã học" : "Bắt đầu"}
-                        </div>
-                        <div className="text-sm font-semibold text-ink">Học kiến thức</div>
-                      </div>
-                      {next.theoryDone ? (
-                        <span className="material-symbols-outlined text-[20px] text-brand">
-                          check_circle
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="flex items-center gap-3 rounded-xl border border-line px-4 py-3">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-muted text-xs font-bold text-muted">
-                        02
-                      </span>
-                      <div className="flex-1">
-                        <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted">
-                          {next.bestScore > 0 ? `Điểm ${next.bestScore}/${next.quizTotal}` : "Tiếp theo"}
-                        </div>
-                        <div className="text-sm font-semibold text-ink">Kiểm tra</div>
-                      </div>
-                      <span className="text-xs text-muted">{next.questionCount} câu</span>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div className="py-6 text-center">
-                  <div className="text-4xl">🌳</div>
-                  <h2 className="display mt-3 text-3xl text-ink">Bạn đã hoàn thành toàn bộ lộ trình!</h2>
-                  <p className="mt-2 text-sm text-muted">
-                    Hãy quay lại ôn tập những câu sai để giữ kiến thức thật chắc.
-                  </p>
-                  <Link
-                    href="/review"
-                    className="btn-primary mt-5 inline-flex rounded-full px-6 py-3 text-sm font-semibold"
-                  >
-                    Ôn lại câu sai
-                  </Link>
-                </div>
-              )}
+              <div className="border-t border-line bg-surface-muted/30 px-6 py-3 text-xs text-muted md:px-8">
+                {session?.user ? (
+                  <span>
+                    Chào {session.user.name ?? session.user.email} · Chuỗi học{" "}
+                    <span className="font-semibold text-ink">{overview.streak} ngày</span> ·{" "}
+                    <span className="font-semibold text-ink">{overview.xp} XP</span>
+                  </span>
+                ) : (
+                  <span>
+                    <Link href="/login" className="font-semibold text-brand hover:underline">
+                      Đăng nhập
+                    </Link>{" "}
+                    để lưu tiến độ học của bạn.
+                  </span>
+                )}
+              </div>
             </div>
-
-            <div className="border-t border-line bg-surface-muted/30 px-6 py-3 text-xs text-muted md:px-8">
-              {session?.user ? (
-                <span>
-                  Chào {session.user.name ?? session.user.email} · Chuỗi học{" "}
-                  <span className="font-semibold text-ink">{overview.streak} ngày</span> ·{" "}
-                  <span className="font-semibold text-ink">{overview.xp} XP</span>
-                </span>
-              ) : (
-                <span>
-                  <Link href="/login" className="font-semibold text-brand hover:underline">
-                    Đăng nhập
-                  </Link>{" "}
-                  để lưu tiến độ học của bạn.
-                </span>
-              )}
-            </div>
-          </div>
-        </section>
+          </section>
+        ) : null}
 
         {/* Plant */}
         <section className="mx-auto mt-16 w-full max-w-[1120px] px-5 md:px-8">

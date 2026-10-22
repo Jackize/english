@@ -1,3 +1,5 @@
+import { A1_LEVEL } from "./a1-curriculum";
+
 export type LevelCode = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
 
 export interface SeedChoice {
@@ -61,182 +63,20 @@ function q(
   wrong: [string, string, string],
   explanation?: string,
 ): SeedQuestion {
+  // Đặt đáp án đúng ở các vị trí khác nhau để bài kiểm tra không lộ đáp án.
+  const labels = [correct, ...wrong];
+  const offset = prompt.length % labels.length;
+  const ordered = [...labels.slice(offset), ...labels.slice(0, offset)];
+
   return {
     prompt,
     explanation,
-    choices: [
-      { label: correct, correct: true },
-      { label: wrong[0] },
-      { label: wrong[1] },
-      { label: wrong[2] },
-    ],
+    choices: ordered.map((label) => ({ label, correct: label === correct })),
   };
 }
 
 export const CURRICULUM: SeedLevel[] = [
-  {
-    code: "A1",
-    name: "Khởi đầu",
-    tagline: "Nền tảng đầu tiên",
-    description:
-      "Làm quen với cấu trúc câu cơ bản, đại từ, mạo từ và những mẫu câu dùng hằng ngày.",
-    grammar: [
-      {
-        title: "To be & đại từ nhân xưng",
-        summary: "Nắm vững am / is / are và cách dùng đại từ I, you, he, she, it, we, they.",
-        sections: [
-          {
-            title: "Động từ to be ở hiện tại",
-            body:
-              "Động từ **to be** có ba dạng ở thì hiện tại:\n- I **am** (I'm)\n- He / She / It **is** (He's, She's, It's)\n- You / We / They **are** (You're, They're)\n\nDùng to be để giới thiệu bản thân, mô tả trạng thái, nghề nghiệp hoặc quốc tịch.\n\nVí dụ:\n- I **am** a student. (Tôi là học sinh.)\n- She **is** from Vietnam. (Cô ấy đến từ Việt Nam.)\n- They **are** very friendly. (Họ rất thân thiện.)",
-            remember: "I đi với am; he / she / it đi với is; you / we / they đi với are.",
-          },
-          {
-            title: "Phủ định và câu hỏi",
-            body:
-              "Thêm **not** sau to be để tạo câu phủ định:\n- I **am not** tired.\n- He **is not** (isn't) at home.\n- They **are not** (aren't) ready.\n\nĐảo to be lên đầu câu để đặt câu hỏi:\n- **Are** you Vietnamese? — Yes, I am.\n- **Is** she a teacher? — No, she isn't.\n\nLỗi thường gặp: bỏ to be khi nói về tuổi hoặc nghề nghiệp.\n- Sai: I 20 years old.\n- Đúng: I **am** 20 years old.",
-            remember: "Câu hỏi Yes/No với to be: Be + chủ ngữ + ...?",
-          },
-        ],
-        questions: [
-          q("Chọn dạng đúng: My sister ___ a doctor.", "is", ["am", "are", "be"], "Chủ ngữ số ít she / he / it đi với is."),
-          q("Câu nào đúng ngữ pháp?", "I am a student.", ["I is a student.", "I are a student.", "I be a student."], "I luôn đi với am."),
-          q("Điền vào chỗ trống: They ___ not from Hanoi.", "are", ["is", "am", "be"], "They là số nhiều nên dùng are."),
-          q("Câu hỏi đúng để hỏi “Bạn có phải người Việt không?” là gì?", "Are you Vietnamese?", ["You are Vietnamese?", "Do you be Vietnamese?", "Is you Vietnamese?"], "Đảo are lên trước chủ ngữ you."),
-        ],
-      },
-      {
-        title: "Mạo từ a / an / the",
-        summary: "Phân biệt a, an và the trong những ngữ cảnh giao tiếp quen thuộc.",
-        sections: [
-          {
-            title: "A / An — danh từ không xác định",
-            body:
-              "Dùng **a / an** trước danh từ đếm được số ít khi người nghe chưa biết cụ thể đó là ai / vật gì.\n- **a** đứng trước âm phụ âm: a book, a teacher, a university (âm /juː/).\n- **an** đứng trước âm nguyên âm: an apple, an hour (âm /aʊ/ câm h).\n\nVí dụ:\n- I need **a** pen. (Tôi cần một cây bút — bất kỳ cây nào.)\n- She is **an** engineer.",
-            remember: "Chọn a / an theo ÂM đọc đầu tiên, không phải theo chữ cái.",
-          },
-          {
-            title: "The — danh từ xác định",
-            body:
-              "Dùng **the** khi cả người nói và người nghe đều biết rõ đối tượng:\n- Đã nhắc đến trước đó: I bought a book. **The** book is interesting.\n- Duy nhất: **the** sun, **the** moon, **the** internet.\n- So sánh nhất: **the** best student.\n\nKhông dùng mạo từ với danh từ số nhiều hoặc không đếm được khi nói chung:\n- **Books** are expensive. (Sách nói chung)\n- **Water** is important.",
-            remember: "Lần đầu nhắc đến dùng a/an; lần sau nhắc lại dùng the.",
-          },
-        ],
-        questions: [
-          q("Chọn mạo từ đúng: I saw ___ elephant at the zoo.", "an", ["a", "the", "no article"], "Elephant bắt đầu bằng nguyên âm /e/ nên dùng an."),
-          q("Điền: She is ___ honest person.", "an", ["a", "the", "no article"], "Honest có h câm, đọc bắt đầu bằng nguyên âm /ɒ/."),
-          q("Câu nào đúng?", "The sun is hot.", ["Sun is hot.", "A sun is hot.", "An sun is hot."], "Sun là vật duy nhất nên dùng the."),
-          q("Chọn câu đúng khi nói chung về sách:", "Books are expensive.", ["The books are expensive.", "A books are expensive.", "An books are expensive."], "Danh từ số nhiều nói chung không dùng mạo từ."),
-        ],
-      },
-      {
-        title: "Thì hiện tại đơn",
-        summary: "Diễn tả thói quen, sự thật hiển nhiên và lịch trình cố định.",
-        sections: [
-          {
-            title: "Cấu trúc",
-            body:
-              "Khẳng định: S + V (thêm -s / -es với he, she, it)\n- I **work** in Hanoi.\n- She **works** in a hospital.\n\nPhủ định: S + do/does + not + V\n- I **do not (don't) like** coffee.\n- He **does not (doesn't) play** tennis.\n\nNghi vấn: Do/Does + S + V?\n- **Do** you speak English?\n- **Does** she live here?",
-            remember: "Ngôi thứ ba số ít: thêm -s/-es ở khẳng định, dùng doesn't ở phủ định.",
-          },
-          {
-            title: "Cách dùng và trạng từ tần suất",
-            body:
-              "Dùng hiện tại đơn cho:\n- Thói quen: I **get up** at 6 a.m.\n- Sự thật: Water **boils** at 100°C.\n- Lịch trình: The train **leaves** at 8 p.m.\n\nTrạng từ tần suất: always, usually, often, sometimes, rarely, never. Chúng thường đứng trước động từ thường và sau to be:\n- She **usually** walks to school.\n- He is **never** late.",
-            remember: "Hiện tại đơn = thói quen / sự thật, không phải hành động đang diễn ra.",
-          },
-        ],
-        questions: [
-          q("Chọn dạng đúng: She ___ to school every day.", "goes", ["go", "going", "gone"], "She là ngôi thứ ba số ít nên động từ thêm -es."),
-          q("Câu phủ định đúng là:", "He doesn't like fish.", ["He don't like fish.", "He not like fish.", "He doesn't likes fish."], "Sau doesn't dùng động từ nguyên mẫu."),
-          q("Điền: ___ they live in Da Nang?", "Do", ["Does", "Are", "Is"], "Chủ ngữ they dùng trợ động từ do."),
-          q("Trạng từ nào phù hợp: I ___ drink coffee in the morning.", "usually", ["yesterday", "tomorrow", "last week"], "Usually là trạng từ tần suất, phù hợp với thì hiện tại đơn."),
-        ],
-      },
-      {
-        title: "Giới từ chỉ nơi chốn & thời gian",
-        summary: "Dùng in / on / at đúng trong các cụm chỉ vị trí và thời điểm.",
-        sections: [
-          {
-            title: "In / On / At — nơi chốn",
-            body:
-              "**In** — bên trong một không gian hoặc khu vực:\n- in the room, in Hanoi, in Vietnam\n\n**On** — trên bề mặt hoặc vị trí tiếp xúc:\n- on the table, on the wall, on the second floor\n\n**At** — một điểm cụ thể:\n- at the door, at the bus stop, at home, at school\n\nVí dụ: The keys are **on** the table. My father is **at** work.",
-            remember: "In = không gian, on = bề mặt, at = điểm cụ thể.",
-          },
-          {
-            title: "In / On / At — thời gian",
-            body:
-              "**In** — khoảng thời gian dài: in the morning, in May, in 2026, in winter.\n**On** — ngày cụ thể: on Monday, on 21 October, on my birthday.\n**At** — giờ cụ thể: at 7 o'clock, at noon, at midnight.\n\nLưu ý: at night (không dùng in the night), at the weekend (Anh) / on the weekend (Mỹ).",
-            remember: "In + tháng/năm/mùa, on + ngày, at + giờ.",
-          },
-        ],
-        questions: [
-          q("Điền: I was born ___ 2005.", "in", ["on", "at", "by"], "Năm dùng giới từ in."),
-          q("Điền: The meeting is ___ Monday.", "on", ["in", "at", "by"], "Ngày cụ thể dùng on."),
-          q("Điền: She usually wakes up ___ 6 o'clock.", "at", ["in", "on", "by"], "Giờ cụ thể dùng at."),
-          q("Chọn cụm đúng:", "at home", ["in home", "on home", "by home"], "Cụm cố định là at home."),
-        ],
-      },
-    ],
-    vocab: [
-      {
-        name: "Chào hỏi & giới thiệu",
-        slug: "chao-hoi-gioi-thieu",
-        icon: "waving_hand",
-        description: "Những từ và mẫu câu đầu tiên để bắt đầu một cuộc trò chuyện.",
-        lesson: {
-          title: "Chào hỏi & giới thiệu bản thân",
-          summary: "8 từ vựng thiết yếu cho lần gặp gỡ đầu tiên.",
-          sections: [
-            {
-              title: "Bắt đầu cuộc trò chuyện",
-              body:
-                "Khi gặp ai đó, bạn có thể dùng:\n- **Hello / Hi** — xin chào\n- **Good morning / afternoon / evening** — chào theo buổi\n- **Nice to meet you** — rất vui được gặp bạn\n\nĐể giới thiệu tên: **My name is ...** hoặc **I'm ...**\nĐể hỏi tên: **What's your name?**",
-              remember: "Nice to meet you — dùng lần đầu gặp; Nice to see you — dùng khi gặp lại.",
-            },
-          ],
-          words: [
-            { word: "hello", ipa: "/həˈləʊ/", wordForm: "excl", meaningVi: "xin chào", meaningEn: "used when meeting someone", example: "Hello, my name is Lan." },
-            { word: "good morning", ipa: "/ɡʊd ˈmɔːnɪŋ/", wordForm: "phrase", meaningVi: "chào buổi sáng", example: "Good morning, everyone!" },
-            { word: "name", ipa: "/neɪm/", wordForm: "n", meaningVi: "tên", meaningEn: "the word someone is called", example: "What is your name?" },
-            { word: "friend", ipa: "/frend/", wordForm: "n", meaningVi: "bạn bè", meaningEn: "a person you know and like", example: "She is my best friend." },
-            { word: "teacher", ipa: "/ˈtiːtʃə/", wordForm: "n", meaningVi: "giáo viên", example: "Our teacher is very kind." },
-            { word: "student", ipa: "/ˈstjuːdənt/", wordForm: "n", meaningVi: "học sinh, sinh viên", example: "I am a student." },
-            { word: "nice to meet you", ipa: "/naɪs tə miːt juː/", wordForm: "phrase", meaningVi: "rất vui được gặp bạn", example: "Nice to meet you, Mr. Brown." },
-            { word: "goodbye", ipa: "/ɡʊdˈbaɪ/", wordForm: "excl", meaningVi: "tạm biệt", example: "Goodbye, see you tomorrow." },
-          ],
-        },
-      },
-      {
-        name: "Gia đình & nhà cửa",
-        slug: "gia-dinh-nha-cua",
-        icon: "home",
-        description: "Từ vựng về các thành viên trong gia đình và không gian sống.",
-        lesson: {
-          title: "Gia đình & các phòng trong nhà",
-          summary: "8 từ vựng mô tả gia đình và ngôi nhà của bạn.",
-          sections: [
-            {
-              title: "Mô tả gia đình",
-              body:
-                "Dùng **have / has** để nói về thành viên gia đình:\n- I **have** two brothers.\n- She **has** one sister.\n\nDùng **there is / there are** để mô tả ngôi nhà:\n- **There is** a kitchen.\n- **There are** three bedrooms.",
-              remember: "There is + số ít; There are + số nhiều.",
-            },
-          ],
-          words: [
-            { word: "family", ipa: "/ˈfæməli/", wordForm: "n", meaningVi: "gia đình", example: "My family has four people." },
-            { word: "mother", ipa: "/ˈmʌðə/", wordForm: "n", meaningVi: "mẹ", example: "My mother is a nurse." },
-            { word: "father", ipa: "/ˈfɑːðə/", wordForm: "n", meaningVi: "bố", example: "My father works in a factory." },
-            { word: "sister", ipa: "/ˈsɪstə/", wordForm: "n", meaningVi: "chị/em gái", example: "My sister is ten years old." },
-            { word: "brother", ipa: "/ˈbrʌðə/", wordForm: "n", meaningVi: "anh/em trai", example: "I have one brother." },
-            { word: "house", ipa: "/haʊs/", wordForm: "n", meaningVi: "ngôi nhà", example: "They live in a big house." },
-            { word: "bedroom", ipa: "/ˈbedruːm/", wordForm: "n", meaningVi: "phòng ngủ", example: "There are two bedrooms upstairs." },
-            { word: "kitchen", ipa: "/ˈkɪtʃɪn/", wordForm: "n", meaningVi: "nhà bếp", example: "My mother is cooking in the kitchen." },
-          ],
-        },
-      },
-    ],
-  },
+  A1_LEVEL,
   {
     code: "A2",
     name: "Sơ cấp",

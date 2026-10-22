@@ -23,15 +23,17 @@ export function buildVocabularyQuestions(words: QuizWord[]): GeneratedQuestion[]
       if (distractors.length === 3) break;
     }
 
+    // Đặt đáp án đúng ở vị trí khác nhau để không lộ đáp án.
+    const labels = [word.meaningVi, ...distractors];
+    const offset = (word.word.length + index) % labels.length;
+    const ordered = [...labels.slice(offset), ...labels.slice(0, offset)];
+
     return {
       prompt: `Từ “${word.word}” có nghĩa là gì?`,
       explanation: `${word.word}${word.ipa ? ` ${word.ipa}` : ""} — ${word.meaningVi}.${
         word.example ? ` Ví dụ: ${word.example}` : ""
       }`,
-      choices: [
-        { label: word.meaningVi, correct: true },
-        ...distractors.map((label) => ({ label })),
-      ],
+      choices: ordered.map((label) => ({ label, correct: label === word.meaningVi })),
     };
   });
 }

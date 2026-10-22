@@ -4,7 +4,7 @@ export const LEVEL_META: Record<
   LevelCode,
   { name: string; tagline: string; short: string; color: string; soft: string }
 > = {
-  A1: { name: "Khởi đầu", tagline: "Nền tảng đầu tiên", short: "A1", color: "#166534", soft: "#eaf7ee" },
+  A1: { name: "Khởi đầu", tagline: "Nền tảng vững chắc", short: "A1", color: "#166534", soft: "#eaf7ee" },
   A2: { name: "Sơ cấp", tagline: "Giao tiếp tự tin hơn", short: "A2", color: "#15803d", soft: "#ecfdf3" },
   B1: { name: "Trung cấp", tagline: "Xử lý tình huống đa dạng", short: "B1", color: "#0f766e", soft: "#ecfdf5" },
   B2: { name: "Trung cao cấp", tagline: "Tư duy học thuật", short: "B2", color: "#0e7490", soft: "#ecfeff" },

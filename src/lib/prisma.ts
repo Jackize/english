@@ -18,8 +18,11 @@ function getConnectionString() {
   return `${url}${url.includes("?") ? "&" : "?"}sslmode=require`;
 }
 
-function createPrismaClient() {
-  const adapter = new PrismaPg({ connectionString: getConnectionString() });
+export function createPrismaClient(options: { max?: number; connectionTimeoutMillis?: number } = {}) {
+  const adapter = new PrismaPg({
+    connectionString: getConnectionString(),
+    ...options,
+  });
   return new PrismaClient({ adapter });
 }
 

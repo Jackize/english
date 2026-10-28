@@ -1,11 +1,11 @@
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { getReviewItems } from "@/lib/learning";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { ReviewPractice } from "@/components/review/ReviewPractice";
 
 export default async function ReviewPage() {
-  const session = await auth();
+  const session = await getSession();
   const items = session?.user?.id ? await getReviewItems(session.user.id) : [];
 
   return (

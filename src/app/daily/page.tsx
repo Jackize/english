@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { getDailyPlan, type DailyDay } from "@/lib/daily-plan";
 import { getOverview } from "@/lib/learning";
 import { SiteHeader } from "@/components/layout/SiteHeader";
@@ -10,21 +10,26 @@ import { ProgressBar } from "@/components/ui/Progress";
 export default async function DailyPage({
   searchParams,
 }: {
-  searchParams: Promise<{ level?: string }>;
+  searchParams: Promise<{ level?: string; week?: string }>;
 }) {
-  const session = await auth();
+  const session = await getSession();
   const overview = await getOverview(session?.user?.id);
   const params = await searchParams;
   const requested =
     typeof params.level === "string" ? params.level.toUpperCase() : null;
   const matchedLevel = overview.levels.find((level) => level.code === requested);
   const plan = getDailyPlan(overview, matchedLevel?.code ?? null);
+  const requestedWeek = params.week ? Number(params.week) : null;
   const activeCode = plan?.levelCode ?? matchedLevel?.code ?? null;
   const weeks = plan
     ? Array.from({ length: Math.ceil(plan.days.length / 5) }, (_, index) =>
         plan.days.slice(index * 5, index * 5 + 5),
       )
     : [];
+  const visibleWeeks =
+    plan && requestedWeek && requestedWeek >= 1 && requestedWeek <= weeks.length
+      ? [weeks[requestedWeek - 1]]
+      : weeks;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -160,9 +165,36 @@ export default async function DailyPage({
             </div>
           )}
 
+          {plan && weeks.length > 1 ? (
+            <div className="no-scrollbar mt-8 mb-10 flex gap-2 overflow-x-auto border-t border-line/60 pt-6 pb-1">
+              <Link
+                href={`/daily?level=${plan.levelCode}`}
+                className={`whitespace-nowrap rounded-full px-4 py-2 text-xs font-semibold transition-colors ${
+                  !requestedWeek ? "bg-brand text-white" : "border border-line bg-surface text-muted hover:text-brand"
+                }`}
+              >
+                Tất cả tuần
+              </Link>
+              {weeks.map((_, index) => (
+                <Link
+                  key={index}
+                  href={`/daily?level=${plan.levelCode}&week=${index + 1}`}
+                  className={`whitespace-nowrap rounded-full px-4 py-2 text-xs font-semibold transition-colors ${
+                    requestedWeek === index + 1
+                      ? "bg-brand text-white"
+                      : "border border-line bg-surface text-muted hover:text-brand"
+                  }`}
+                >
+                  Tuần {index + 1}
+                </Link>
+              ))}
+            </div>
+          ) : null}
+
           {plan && plan.days.length > 0 ? (
             <div className="mt-10 space-y-9">
-              {weeks.map((week, weekIndex) => {
+              {visibleWeeks.map((week) => {
+                const weekIndex = weeks.indexOf(week);
                 const completedInWeek = week.filter((day) => day.completed).length;
                 return (
                   <section key={week[0].day}>

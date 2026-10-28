@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 import { authConfig } from "./auth.config";
+import { cache } from "react";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -34,3 +35,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
 });
+
+
+// Dedup auth() trong cùng request (Header/Footer/Page đều dùng chung).
+export const getSession = cache(async () => auth());

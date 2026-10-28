@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { getOverview } from "@/lib/learning";
 import { LEVEL_META } from "@/lib/curriculum";
 import { SiteHeader } from "@/components/layout/SiteHeader";
@@ -7,9 +7,18 @@ import { SiteFooter } from "@/components/layout/SiteFooter";
 import { LessonRow } from "@/components/learning/LessonRow";
 import { ProgressBar } from "@/components/ui/Progress";
 
-export default async function RoadmapPage() {
-  const session = await auth();
-  const overview = await getOverview(session?.user?.id);
+export default async function RoadmapPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ level?: string }>;
+}) {
+  const session = await getSession();
+  const params = await searchParams;
+  const LEVEL_CODES = ["A1", "A2", "B1", "B2", "C1", "C2"] as const;
+  const selected = LEVEL_CODES.includes(params.level as (typeof LEVEL_CODES)[number])
+    ? (params.level as (typeof LEVEL_CODES)[number])
+    : null;
+  const overview = await getOverview(session?.user?.id, selected ?? undefined);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -67,6 +76,30 @@ export default async function RoadmapPage() {
                 </a>
               );
             })}
+          </div>
+        </section>
+
+        <section className="mx-auto w-full max-w-[1120px] px-5 pb-4 md:px-8">
+          <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
+            <Link
+              href="/roadmap"
+              className={`whitespace-nowrap rounded-full px-4 py-2 text-xs font-semibold transition-colors ${
+                !selected ? "bg-brand text-white" : "border border-line bg-surface text-muted hover:text-brand"
+              }`}
+            >
+              Tất cả
+            </Link>
+            {LEVEL_CODES.map((code) => (
+              <Link
+                key={code}
+                href={`/roadmap?level=${code}`}
+                className={`whitespace-nowrap rounded-full px-4 py-2 text-xs font-semibold transition-colors ${
+                  selected === code ? "bg-brand text-white" : "border border-line bg-surface text-muted hover:text-brand"
+                }`}
+              >
+                {code}
+              </Link>
+            ))}
           </div>
         </section>
 

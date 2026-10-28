@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { getDailyPlan } from "@/lib/daily-plan";
 import { getOverview } from "@/lib/learning";
 import { LEVEL_META, TRACK_META } from "@/lib/curriculum";
@@ -10,7 +10,7 @@ import { PlantGrowth } from "@/components/learning/PlantGrowth";
 import { ProgressBar, LevelBadge } from "@/components/ui/Progress";
 
 export default async function HomePage() {
-  const session = await auth();
+  const session = await getSession();
   const overview = await getOverview(session?.user?.id);
   const next = overview.nextLesson;
   const dailyPlan = getDailyPlan(overview);

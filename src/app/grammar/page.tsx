@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { getOverview } from "@/lib/learning";
 import { LEVEL_META, type LevelCode } from "@/lib/curriculum";
 import { SiteHeader } from "@/components/layout/SiteHeader";
@@ -14,7 +14,7 @@ export default async function GrammarPage({
 }: {
   searchParams: Promise<{ level?: string }>;
 }) {
-  const session = await auth();
+  const session = await getSession();
   const params = await searchParams;
   const selected = LEVEL_CODES.includes(params.level as LevelCode)
     ? (params.level as LevelCode)

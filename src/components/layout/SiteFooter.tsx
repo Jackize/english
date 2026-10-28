@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 
 export async function SiteFooter() {
-  const session = await auth();
+  const session = await getSession();
   const user = session?.user;
 
   return (

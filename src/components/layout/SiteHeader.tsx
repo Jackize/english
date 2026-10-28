@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { SignOutButton } from "./SignOutButton";
 
 export type NavKey =
@@ -23,7 +23,7 @@ const links: { href: string; key: NavKey; label: string }[] = [
 ];
 
 export async function SiteHeader({ active }: { active?: NavKey }) {
-  const session = await auth();
+  const session = await getSession();
   const user = session?.user;
 
   return (

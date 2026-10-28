@@ -3,10 +3,34 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { LEVEL_META } from "@/lib/curriculum";
 import { getReadingUnit } from "@/lib/reading";
+import { prisma } from "@/lib/prisma";
 import { getReadingQuestionCount } from "@/lib/reading-types";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
-import { ReadingUnitExperience } from "@/components/reading/ReadingUnitExperience";
+import dynamic from "next/dynamic";
+
+const ReadingUnitExperience = dynamic(
+  () => import("@/components/reading/ReadingUnitExperience").then((mod) => mod.ReadingUnitExperience),
+  {
+    loading: () => (
+      <div className="mx-auto w-full max-w-[1120px] px-5 py-10 md:px-8">
+        <div className="card p-6 text-sm text-muted">Đang tải bài đọc...</div>
+      </div>
+    ),
+  },
+);
+
+export const revalidate = 3600;
+
+export async function generateStaticParams() {
+  const units = await prisma.readingUnit.findMany({
+    select: { slug: true, level: { select: { code: true } } },
+  });
+  return units.map((unit) => ({
+    level: unit.level.code.toLowerCase(),
+    unit: unit.slug,
+  }));
+}
 
 export async function generateMetadata({
   params,

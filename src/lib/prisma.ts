@@ -21,6 +21,10 @@ function getConnectionString() {
 export function createPrismaClient(options: { max?: number; connectionTimeoutMillis?: number } = {}) {
   const adapter = new PrismaPg({
     connectionString: getConnectionString(),
+    // Supabase pooler có giới hạn số client/session. Mặc định 1 connection
+    // cho mỗi PrismaClient để tránh vượt pool_size khi build prerender song song.
+    max: options.max ?? 1,
+    connectionTimeoutMillis: options.connectionTimeoutMillis ?? 10_000,
     ...options,
   });
   return new PrismaClient({ adapter });

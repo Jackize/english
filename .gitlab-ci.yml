@@ -45,11 +45,8 @@ build:
     - npm ci --prefer-offline
     # prisma generate chạy qua postinstall, build script tự generate lại
     - npm run build
-  artifacts:
-    name: "build-$CI_COMMIT_REF_SLUG"
-    paths:
-      - .next/
-    expire_in: 3 days
+  # Không upload .next/ làm artifact: quá lớn và deploy sẽ tự build trên VPS.
+  # Nếu cần kiểm tra build, job này vẫn fail khi `npm run build` lỗi.
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 

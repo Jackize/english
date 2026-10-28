@@ -14,11 +14,11 @@ export default async function VocabularyPage({
   searchParams: Promise<{ level?: string }>;
 }) {
   const session = await auth();
-  const overview = await getOverview(session?.user?.id);
   const params = await searchParams;
   const selected = LEVEL_CODES.includes(params.level as LevelCode)
     ? (params.level as LevelCode)
     : null;
+  const overview = await getOverview(session?.user?.id, selected ?? undefined);
 
   const levels = selected
     ? overview.levels.filter((level) => level.code === selected)

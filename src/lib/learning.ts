@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { cache } from "react";
 import { getPlantStage, type LevelCode } from "./curriculum";
 
 export interface LessonCard {
@@ -131,7 +132,7 @@ async function getCurriculumLevels() {
   return data;
 }
 
-export async function getOverview(userId?: string): Promise<Overview> {
+export const getOverview = cache(async (userId?: string, levelCode?: LevelCode): Promise<Overview> => {
   // Query user-dependent chạy SONG SONG (trước đây là 4 query tuần tự
   // ≈ 4 × 250ms round-trip = ~1s chỉ để chờ DB).
   const [levels, progressRows, user, reviewCount] = await Promise.all([
@@ -168,6 +169,7 @@ export async function getOverview(userId?: string): Promise<Overview> {
   let vocabularyTotal = 0;
   let vocabularyCompleted = 0;
   let topicCount = 0;
+  let totalXp = 0;
 
   const levelOverviews: LevelOverview[] = levels.map((level) => {
     const grammarLessons: LessonCard[] = [];
@@ -179,35 +181,35 @@ export async function getOverview(userId?: string): Promise<Overview> {
       else vocabularyLessons.push(card);
     }
 
+    // Map lessonId -> topicId để tránh O(n²) find trong level.lessons.
+    const lessonTopicId = new Map(level.lessons.map((row) => [row.id, row.topicId]));
+
     const topics: TopicGroup[] = level.topics.map((topic) => ({
       id: topic.id,
       name: topic.name,
       slug: topic.slug,
       icon: topic.icon,
       description: topic.description,
-      lessons: vocabularyLessons.filter((lesson) => {
-        const original = level.lessons.find((row) => row.id === lesson.id);
-        return original?.topicId === topic.id;
-      }),
+      lessons: vocabularyLessons.filter(
+        (lesson) => lessonTopicId.get(lesson.id) === topic.id,
+      ),
     }));
 
-    const topicless: TopicGroup | null =
-      vocabularyLessons.some((lesson) => {
-        const original = level.lessons.find((row) => row.id === lesson.id);
-        return !original?.topicId;
-      })
-        ? {
-            id: `${level.id}-general`,
-            name: "Bài học khác",
-            slug: "khac",
-            icon: "menu_book",
-            description: null,
-            lessons: vocabularyLessons.filter((lesson) => {
-              const original = level.lessons.find((row) => row.id === lesson.id);
-              return !original?.topicId;
-            }),
-          }
-        : null;
+    const hasTopicless = vocabularyLessons.some(
+      (lesson) => !lessonTopicId.get(lesson.id),
+    );
+    const topicless: TopicGroup | null = hasTopicless
+      ? {
+          id: `${level.id}-general`,
+          name: "Bài học khác",
+          slug: "khac",
+          icon: "menu_book",
+          description: null,
+          lessons: vocabularyLessons.filter(
+            (lesson) => !lessonTopicId.get(lesson.id),
+          ),
+        }
+      : null;
 
     const allTopics = topicless ? [...topics, topicless] : topics;
     const levelGrammarCompleted = grammarLessons.filter((lesson) => lesson.completed).length;
@@ -220,6 +222,10 @@ export async function getOverview(userId?: string): Promise<Overview> {
     vocabularyTotal += vocabularyLessons.length;
     vocabularyCompleted += levelVocabCompleted;
     topicCount += level.topics.length;
+    totalXp += [...grammarLessons, ...vocabularyLessons].reduce(
+      (sum, lesson) => sum + lesson.xp,
+      0,
+    );
 
     return {
       id: level.id,
@@ -244,28 +250,26 @@ export async function getOverview(userId?: string): Promise<Overview> {
     };
   });
 
-  const allLessons = levelOverviews.flatMap((level) =>
-    [...level.grammar.lessons, ...level.vocabulary.lessons].map((lesson) => ({
-      ...lesson,
-      levelCode: level.code,
-      levelName: level.name,
-    })),
-  );
+  // Tìm bài chưa hoàn thành đầu tiên theo thứ tự level/track, tránh build mảng lớn.
+  let nextPair: { lesson: LessonCard; level: LevelOverview } | null = null;
+  for (const level of levelOverviews) {
+    for (const lesson of [...level.grammar.lessons, ...level.vocabulary.lessons]) {
+      if (!lesson.completed) {
+        nextPair = { lesson, level };
+        break;
+      }
+    }
+    if (nextPair) break;
+  }
 
-  const ordered = levelOverviews.flatMap((level) => [
-    ...level.grammar.lessons.map((lesson) => ({ lesson, level })),
-    ...level.vocabulary.lessons.map((lesson) => ({ lesson, level })),
-  ]);
-
-  const next = ordered.find(({ lesson }) => !lesson.completed) ?? null;
-  const nextLesson = next
+  const nextLesson = nextPair
     ? {
-        ...next.lesson,
-        levelCode: next.level.code,
-        levelName: next.level.name,
+        ...nextPair.lesson,
+        levelCode: nextPair.level.code,
+        levelName: nextPair.level.name,
         topicName: (() => {
-          const topic = next.level.vocabulary.topics.find((group) =>
-            group.lessons.some((lesson) => lesson.id === next.lesson.id),
+          const topic = nextPair.level.vocabulary.topics.find((group) =>
+            group.lessons.some((lesson) => lesson.id === nextPair.lesson.id),
           );
           return topic?.name ?? null;
         })(),
@@ -274,13 +278,16 @@ export async function getOverview(userId?: string): Promise<Overview> {
 
   const percent = totalLessons === 0 ? 0 : Math.round((completedLessons / totalLessons) * 100);
   const plant = getPlantStage(percent);
-  const totalXp = allLessons.reduce((sum, lesson) => sum + lesson.xp, 0);
   const remainingXp = plant.next
     ? Math.max(0, Math.ceil((plant.next.threshold / 100) * totalXp) - (user?.xp ?? 0))
     : 0;
 
+  const visibleLevels = levelCode
+    ? levelOverviews.filter((level) => level.code === levelCode)
+    : levelOverviews;
+
   return {
-    levels: levelOverviews,
+    levels: visibleLevels,
     totalLessons,
     completedLessons,
     percent,
@@ -294,7 +301,7 @@ export async function getOverview(userId?: string): Promise<Overview> {
     nextLesson,
     plant: { ...plant, remainingXp },
   };
-}
+});
 
 export async function getLessonForLearner(lessonId: string, userId?: string) {
   // Song song: lesson (query lớn, nhiều include) + progress (query nhỏ)

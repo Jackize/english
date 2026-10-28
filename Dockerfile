@@ -1,7 +1,7 @@
 # ============================================================
 # Docker image cho English Vocabulary App
 # Build: Next.js production (prisma generate + next build)
-# Runtime: node:22-slim, chạy next start trên cổng 3000
+# Runtime: node:22-slim, chạy standalone server trên cổng 3000
 # ============================================================
 
 # ---------- Stage 1: Build ----------
@@ -25,9 +25,13 @@ RUN --mount=type=secret,id=database_url,env=DATABASE_URL npm run build
 FROM node:22-slim
 WORKDIR /app
 ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
 
-# Copy toàn bộ app đã build (bao gồm node_modules + .next + generated prisma client)
-COPY --from=build /app ./
+# Chỉ copy output standalone + static assets + public
+COPY --from=build /app/.next/standalone ./
+COPY --from=build /app/.next/static ./.next/static
+COPY --from=build /app/public ./public
 
 EXPOSE 3000
-CMD ["npx", "next", "start", "-p", "3000"]
+CMD ["node", "server.js"]

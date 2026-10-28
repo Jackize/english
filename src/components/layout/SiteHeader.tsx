@@ -1,5 +1,7 @@
+"use client";
+
 import Link from "next/link";
-import { getSession } from "@/lib/auth";
+import { useSession } from "next-auth/react";
 import { SignOutButton } from "./SignOutButton";
 
 export type NavKey =
@@ -22,8 +24,8 @@ const links: { href: string; key: NavKey; label: string }[] = [
   { href: "/review", key: "review", label: "Ôn tập" },
 ];
 
-export async function SiteHeader({ active }: { active?: NavKey }) {
-  const session = await getSession();
+export function SiteHeader({ active }: { active?: NavKey }) {
+  const { data: session } = useSession();
   const user = session?.user;
 
   return (

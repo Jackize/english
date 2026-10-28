@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
+import { getSession } from "@/lib/auth";
+import { AppProviders } from "@/components/layout/AppProviders";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -22,7 +24,7 @@ export const metadata: Metadata = {
     "Học IELTS theo từng chặng: ngữ pháp, từ vựng và đọc hiểu chia theo sáu bậc CEFR từ A1 đến C2, có bài kiểm tra và ôn lại câu sai.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -32,7 +34,9 @@ export default function RootLayout({
       lang="vi"
       className={`${inter.variable} ${materialSymbols.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-background text-ink">{children}</body>
+      <body className="min-h-full bg-background text-ink">
+        <AppProviders session={await getSession()}>{children}</AppProviders>
+      </body>
     </html>
   );
 }

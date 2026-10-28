@@ -36,6 +36,9 @@ export async function SiteFooter() {
             <Link href="/vocabulary" className="block text-ink hover:text-brand">
               Từ vựng
             </Link>
+            <Link href="/reading" className="block text-ink hover:text-brand">
+              Đọc hiểu
+            </Link>
           </div>
           <div className="space-y-2">
             <div className="text-xs font-bold uppercase tracking-[0.16em] text-muted">Tài khoản</div>

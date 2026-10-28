@@ -29,8 +29,9 @@ model Level {
   description String?
   order       Int
   createdAt   DateTime @default(now())
-  lessons     Lesson[]
-  topics      Topic[]
+  lessons      Lesson[]
+  topics       Topic[]
+  readingUnits ReadingUnit[]
 }
 
 model Topic {
@@ -165,4 +166,135 @@ model ReviewItem {
 
   @@unique([userId, questionId])
   @@index([userId, resolved])
+}
+
+// ---------------------------------------------------------------------------
+// Reading track
+// Reading có nhiều dạng câu hỏi và nội dung riêng (passage, evidence,
+// matching, short answer) nên dùng bảng chuyên biệt thay vì nhồi vào Question.
+// ---------------------------------------------------------------------------
+
+model ReadingUnit {
+  id               String                   @id @default(cuid())
+  levelId          String
+  slug             String
+  unitNumber       Int
+  unitTotal        Int                      @default(10)
+  title            String
+  passageTitle     String
+  goal             String
+  description      String
+  lengthWords      Int
+  estimatedMinutes Int
+  timeLabel        String
+  questionTypes    String[]                 @default([])
+  warmUp           String[]                 @default([])
+  passage          String[]                 @default([])
+  source           String                   @default("")
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  level            Level                    @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  groups           ReadingQuestionGroup[]
+  vocabulary       ReadingVocabularyEntry[]
+  skill            ReadingSkill?
+  mistakes         ReadingMistake[]
+
+  @@unique([levelId, slug])
+  @@unique([levelId, unitNumber])
+  @@index([levelId, unitNumber])
+}
+
+model ReadingSkill {
+  id      String      @id @default(cuid())
+  unitId  String      @unique
+  title   String
+  intro   String
+  bullets String[]    @default([])
+  unit    ReadingUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+}
+
+model ReadingQuestionGroup {
+  id            String            @id @default(cuid())
+  unitId        String
+  badge         String
+  label         String
+  instructionVi String
+  order         Int               @default(0)
+  unit          ReadingUnit       @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  questions     ReadingQuestion[]
+
+  @@index([unitId, order])
+}
+
+model ReadingQuestion {
+  id              String               @id @default(cuid())
+  groupId         String
+  number          Int
+  kind            String
+  prompt          String
+  explanation     String
+  evidence        String?
+  answerKey       String?
+  acceptedAnswers String[]             @default([])
+  modelAnswer     String?
+  order           Int                  @default(0)
+  group           ReadingQuestionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  choices         ReadingChoice[]
+  matchItems      ReadingMatchItem[]
+
+  @@unique([groupId, number])
+  @@index([groupId, order])
+}
+
+model ReadingChoice {
+  id         String          @id @default(cuid())
+  questionId String
+  choiceKey  String
+  label      String
+  text       String?
+  isCorrect  Boolean         @default(false)
+  order      Int             @default(0)
+  question   ReadingQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, choiceKey])
+  @@index([questionId, order])
+}
+
+model ReadingMatchItem {
+  id         String          @id @default(cuid())
+  questionId String
+  side       String
+  itemKey    String
+  label      String
+  matchKey   String?
+  order      Int             @default(0)
+  question   ReadingQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, side, itemKey])
+  @@index([questionId, side, order])
+}
+
+model ReadingVocabularyEntry {
+  id        String      @id @default(cuid())
+  unitId    String
+  word      String
+  ipa       String      @default("")
+  meaningVi String
+  example   String      @default("")
+  order     Int         @default(0)
+  unit      ReadingUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@unique([unitId, word])
+  @@index([unitId, order])
+}
+
+model ReadingMistake {
+  id     String      @id @default(cuid())
+  unitId String
+  title  String
+  body   String
+  order  Int         @default(0)
+  unit   ReadingUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@index([unitId, order])
 }

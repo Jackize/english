@@ -8,6 +8,7 @@ export type NavKey =
   | "roadmap"
   | "grammar"
   | "vocabulary"
+  | "reading"
   | "review"
   | "admin";
 
@@ -17,6 +18,7 @@ const links: { href: string; key: NavKey; label: string }[] = [
   { href: "/roadmap", key: "roadmap", label: "Lộ trình" },
   { href: "/grammar", key: "grammar", label: "Ngữ pháp" },
   { href: "/vocabulary", key: "vocabulary", label: "Từ vựng" },
+  { href: "/reading", key: "reading", label: "Đọc hiểu" },
   { href: "/review", key: "review", label: "Ôn tập" },
 ];
 

@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { createPrismaClient } from "../src/lib/prisma";
 import { buildVocabularyQuestions } from "../src/lib/vocabulary-quiz";
+import type { ReadingUnit } from "../src/lib/reading-types";
+import { A1_READING_UNITS } from "./a1-reading";
 import { CURRICULUM, type SeedQuestion, type SeedWord } from "./curriculum-data";
 
 // Seed chạy tuần tự; chỉ mở một kết nối để tránh làm cạn pooler của Supabase.
@@ -154,6 +156,167 @@ async function seedVocabTopic(
   return { topic, lesson, words: data.lesson.words.length, questions: questions.length };
 }
 
+async function seedReadingUnit(levelId: string, data: ReadingUnit) {
+  const unit = await prisma.readingUnit.upsert({
+    where: { levelId_slug: { levelId, slug: data.slug } },
+    update: {
+      unitNumber: data.unitNumber,
+      unitTotal: data.unitTotal,
+      title: data.title,
+      passageTitle: data.passageTitle,
+      goal: data.goal,
+      description: data.description,
+      lengthWords: data.lengthWords,
+      estimatedMinutes: data.estimatedMinutes,
+      timeLabel: data.timeLabel,
+      questionTypes: data.questionTypes,
+      warmUp: data.warmUp,
+      passage: data.passage,
+      source: data.source,
+    },
+    create: {
+      levelId,
+      slug: data.slug,
+      unitNumber: data.unitNumber,
+      unitTotal: data.unitTotal,
+      title: data.title,
+      passageTitle: data.passageTitle,
+      goal: data.goal,
+      description: data.description,
+      lengthWords: data.lengthWords,
+      estimatedMinutes: data.estimatedMinutes,
+      timeLabel: data.timeLabel,
+      questionTypes: data.questionTypes,
+      warmUp: data.warmUp,
+      passage: data.passage,
+      source: data.source,
+    },
+  });
+
+  // Xoá nội dung con cũ rồi tạo lại để seed idempotent. Xoá group sẽ cascade
+  // xuống question/choice/matchItem.
+  await prisma.readingQuestionGroup.deleteMany({ where: { unitId: unit.id } });
+  await prisma.readingVocabularyEntry.deleteMany({ where: { unitId: unit.id } });
+  await prisma.readingMistake.deleteMany({ where: { unitId: unit.id } });
+  await prisma.readingSkill.deleteMany({ where: { unitId: unit.id } });
+
+  await prisma.readingSkill.create({
+    data: {
+      unitId: unit.id,
+      title: data.skill.title,
+      intro: data.skill.intro,
+      bullets: data.skill.bullets,
+    },
+  });
+
+  if (data.vocabulary.length > 0) {
+    await prisma.readingVocabularyEntry.createMany({
+      data: data.vocabulary.map((entry, index) => ({
+        unitId: unit.id,
+        word: entry.word,
+        ipa: entry.ipa,
+        meaningVi: entry.meaningVi,
+        example: entry.example,
+        order: index,
+      })),
+    });
+  }
+
+  if (data.mistakes.length > 0) {
+    await prisma.readingMistake.createMany({
+      data: data.mistakes.map((mistake, index) => ({
+        unitId: unit.id,
+        title: mistake.title,
+        body: mistake.body,
+        order: index,
+      })),
+    });
+  }
+
+  let questionCount = 0;
+
+  for (const [groupIndex, group] of data.groups.entries()) {
+    const groupRow = await prisma.readingQuestionGroup.create({
+      data: {
+        unitId: unit.id,
+        badge: group.badge,
+        label: group.label,
+        instructionVi: group.instructionVi,
+        order: groupIndex,
+      },
+    });
+
+    const questionRows = group.questions.map((question, questionIndex) => ({
+      id: randomUUID(),
+      groupId: groupRow.id,
+      number: question.number,
+      kind: question.kind,
+      prompt: question.prompt,
+      explanation: question.explanation,
+      evidence: question.evidence ?? null,
+      answerKey:
+        question.kind === "true-false" || question.kind === "mcq" ? question.answer : null,
+      acceptedAnswers: question.kind === "short-answer" ? question.acceptedAnswers : [],
+      modelAnswer: question.kind === "short-answer" ? question.modelAnswer : null,
+      order: questionIndex,
+    }));
+
+    if (questionRows.length > 0) {
+      await prisma.readingQuestion.createMany({ data: questionRows });
+      questionCount += questionRows.length;
+    }
+
+    const choices = group.questions.flatMap((question, questionIndex) => {
+      if (question.kind !== "mcq") return [];
+
+      return question.options.map((option, optionIndex) => ({
+        id: randomUUID(),
+        questionId: questionRows[questionIndex].id,
+        choiceKey: option.id,
+        label: option.label,
+        text: option.text,
+        isCorrect: option.id === question.answer,
+        order: optionIndex,
+      }));
+    });
+
+    if (choices.length > 0) {
+      await prisma.readingChoice.createMany({ data: choices });
+    }
+
+    const matchItems = group.questions.flatMap((question, questionIndex) => {
+      if (question.kind !== "matching") return [];
+
+      return [
+        ...question.left.map((item, itemIndex) => ({
+          id: randomUUID(),
+          questionId: questionRows[questionIndex].id,
+          side: "left",
+          itemKey: item.id,
+          label: item.label,
+          matchKey: question.answer[item.id] ?? null,
+          order: itemIndex,
+        })),
+        ...question.right.map((item, itemIndex) => ({
+          id: randomUUID(),
+          questionId: questionRows[questionIndex].id,
+          side: "right",
+          itemKey: item.id,
+          label: item.label,
+          matchKey: null,
+          order: itemIndex,
+        })),
+      ];
+    });
+
+    if (matchItems.length > 0) {
+      await prisma.readingMatchItem.createMany({ data: matchItems });
+    }
+  }
+
+  return { unit, questions: questionCount, words: data.vocabulary.length };
+}
+
 async function cleanupTopics(levelId: string, slugs: string[]) {
   if (slugs.length === 0) return 0;
 
@@ -189,6 +352,9 @@ async function main() {
   let vocabCount = 0;
   let vocabQuestions = 0;
   let wordCount = 0;
+  let readingUnitCount = 0;
+  let readingQuestionCount = 0;
+  let readingWordCount = 0;
   let removedTopics = 0;
   let seededLevels = 0;
 
@@ -198,6 +364,8 @@ async function main() {
   const vocabTo =
     Number(process.env.SEED_VOCAB_TO ?? Number.MAX_SAFE_INTEGER) || Number.MAX_SAFE_INTEGER;
   const skipGrammar = process.env.SEED_SKIP_GRAMMAR === "1";
+  const skipVocab = process.env.SEED_SKIP_VOCAB === "1";
+  const skipReading = process.env.SEED_SKIP_READING === "1";
   const skipCleanup = process.env.SEED_SKIP_CLEANUP === "1";
 
   for (const [levelIndex, levelData] of CURRICULUM.entries()) {
@@ -230,6 +398,8 @@ async function main() {
     }
 
     for (const [i, topicData] of levelData.vocab.entries()) {
+      if (skipVocab) break;
+
       const topicNumber = i + 1;
       if (topicNumber < vocabFrom || topicNumber > vocabTo) continue;
 
@@ -237,6 +407,15 @@ async function main() {
       vocabCount += 1;
       vocabQuestions += result.questions;
       wordCount += result.words;
+    }
+
+    if (!skipReading && levelData.code === "A1") {
+      for (const unitData of A1_READING_UNITS) {
+        const result = await seedReadingUnit(level.id, unitData);
+        readingUnitCount += 1;
+        readingQuestionCount += result.questions;
+        readingWordCount += result.words;
+      }
     }
 
     if (!skipCleanup && levelData.code === "A1") {
@@ -249,6 +428,9 @@ async function main() {
   console.log(`Seeded ${seededLevels} CEFR level(s)`);
   console.log(`Grammar: ${grammarCount} lessons / ${grammarQuestions} questions`);
   console.log(`Vocabulary: ${vocabCount} topics & lessons / ${wordCount} words / ${vocabQuestions} questions`);
+  console.log(
+    `Reading: ${readingUnitCount} units / ${readingWordCount} words / ${readingQuestionCount} questions`,
+  );
   if (removedTopics > 0) {
     console.log(`Removed ${removedTopics} stale A1 topic(s)`);
   }

@@ -2,27 +2,11 @@
 
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { BrandLogo } from "./BrandLogo";
+import { NAV_LINKS, type NavKey } from "./navigation";
 import { SignOutButton } from "./SignOutButton";
 
-export type NavKey =
-  | "home"
-  | "daily"
-  | "roadmap"
-  | "grammar"
-  | "vocabulary"
-  | "reading"
-  | "review"
-  | "admin";
-
-const links: { href: string; key: NavKey; label: string }[] = [
-  { href: "/", key: "home", label: "Trang chủ" },
-  { href: "/daily", key: "daily", label: "Theo ngày" },
-  { href: "/roadmap", key: "roadmap", label: "Lộ trình" },
-  { href: "/grammar", key: "grammar", label: "Ngữ pháp" },
-  { href: "/vocabulary", key: "vocabulary", label: "Từ vựng" },
-  { href: "/reading", key: "reading", label: "Đọc hiểu" },
-  { href: "/review", key: "review", label: "Ôn tập" },
-];
+export type { NavKey };
 
 export function SiteHeader({ active }: { active?: NavKey }) {
   const { data: session } = useSession();
@@ -32,15 +16,10 @@ export function SiteHeader({ active }: { active?: NavKey }) {
     <header className="sticky top-0 z-50 border-b border-line/80 bg-background/90 backdrop-blur">
       <div className="mx-auto flex h-16 w-full max-w-[1120px] items-center justify-between px-5 md:px-8">
         <div className="flex items-center gap-8">
-          <Link href="/" className="flex shrink-0 items-baseline gap-2 whitespace-nowrap">
-            <span className="text-[19px] font-extrabold tracking-tight text-brand">eng-growth</span>
-            <span className="hidden rounded-full bg-brand-soft px-2 py-0.5 text-[10px] font-bold tracking-wider text-brand lg:inline">
-              IELTS A1 → C2
-            </span>
-          </Link>
+          <BrandLogo />
 
           <nav className="hidden items-center gap-6 lg:flex">
-            {links.map((link) => (
+            {NAV_LINKS.map((link) => (
               <Link
                 key={link.key}
                 href={link.href}
@@ -89,7 +68,7 @@ export function SiteHeader({ active }: { active?: NavKey }) {
       </div>
 
       <nav className="no-scrollbar flex gap-5 overflow-x-auto border-t border-line/60 px-5 py-2 lg:hidden">
-        {links.map((link) => (
+        {NAV_LINKS.map((link) => (
           <Link
             key={link.key}
             href={link.href}

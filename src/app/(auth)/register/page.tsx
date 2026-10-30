@@ -6,6 +6,7 @@ import { FormEvent, useState } from "react";
 import { signIn } from "next-auth/react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { BrandLogo } from "@/components/layout/BrandLogo";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -50,12 +51,7 @@ export default function RegisterPage() {
     <main className="flex min-h-screen flex-col bg-background">
       <header className="border-b border-line">
         <div className="mx-auto flex h-16 w-full max-w-[1120px] items-center justify-between px-5 md:px-8">
-          <Link href="/" className="flex items-baseline gap-2">
-            <span className="text-[19px] font-extrabold tracking-tight text-brand">eng-growth</span>
-            <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[10px] font-bold tracking-wider text-brand">
-              IELTS A1 → C2
-            </span>
-          </Link>
+          <BrandLogo />
           <Link href="/" className="text-sm font-medium text-muted hover:text-brand">
             Về trang chủ
           </Link>

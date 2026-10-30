@@ -1,13 +1,6 @@
 
-const navLabels = [
-  "Trang chủ",
-  "Theo ngày",
-  "Lộ trình",
-  "Ngữ pháp",
-  "Từ vựng",
-  "Đọc hiểu",
-  "Ôn tập",
-];
+import { BrandLogo } from "@/components/layout/BrandLogo";
+import { NAV_LINKS } from "@/components/layout/navigation";
 
 export function LoadingShell({
   children,
@@ -19,16 +12,14 @@ export function LoadingShell({
       <header className="sticky top-0 z-50 border-b border-line/80 bg-background/90 backdrop-blur">
         <div className="mx-auto flex h-16 w-full max-w-[1120px] items-center justify-between px-5 md:px-8">
           <div className="flex items-center gap-8">
-            <span className="text-[19px] font-extrabold tracking-tight text-brand">
-              eng-growth
-            </span>
+            <BrandLogo variant="placeholder" />
             <nav className="hidden items-center gap-6 lg:flex">
-              {navLabels.map((label) => (
+              {NAV_LINKS.map((link) => (
                 <span
-                  key={label}
+                  key={link.key}
                   className="whitespace-nowrap text-sm font-medium text-muted/70"
                 >
-                  {label}
+                  {link.label}
                 </span>
               ))}
             </nav>
@@ -38,9 +29,9 @@ export function LoadingShell({
           </span>
         </div>
         <nav className="no-scrollbar flex gap-5 overflow-x-auto border-t border-line/60 px-5 py-2 lg:hidden">
-          {navLabels.map((label) => (
-            <span key={label} className="whitespace-nowrap text-sm font-medium text-muted/70">
-              {label}
+          {NAV_LINKS.map((link) => (
+            <span key={link.key} className="whitespace-nowrap text-sm font-medium text-muted/70">
+              {link.label}
             </span>
           ))}
         </nav>

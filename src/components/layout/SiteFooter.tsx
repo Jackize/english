@@ -41,6 +41,9 @@ export function SiteFooter() {
             <Link href="/reading" className="block text-ink hover:text-brand">
               Đọc hiểu
             </Link>
+            <Link href="/writing" className="block text-ink hover:text-brand">
+              Viết
+            </Link>
           </div>
           <div className="space-y-2">
             <div className="text-xs font-bold uppercase tracking-[0.16em] text-muted">Tài khoản</div>

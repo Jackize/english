@@ -14,7 +14,13 @@ export const authConfig: NextAuthConfig = {
       const isLoggedIn = !!auth?.user;
       const { pathname } = request.nextUrl;
 
-      const protectedPaths = ["/lesson", "/review", "/admin"];
+      // /admin chỉ dành cho tài khoản có role ADMIN. Kiểm tra ở proxy (edge)
+      // để user thường không vào được kể cả khi gõ thẳng URL.
+      if (pathname.startsWith("/admin")) {
+        return auth?.user?.role === "ADMIN";
+      }
+
+      const protectedPaths = ["/lesson", "/review"];
       const isProtected = protectedPaths.some((p) => pathname.startsWith(p));
 
       if (isProtected) return isLoggedIn;
@@ -26,12 +32,14 @@ export const authConfig: NextAuthConfig = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.role = user.role ?? "USER";
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user && token.id) {
         session.user.id = token.id as string;
+        session.user.role = (token.role as "USER" | "ADMIN" | undefined) ?? "USER";
       }
       return session;
     },

@@ -1,6 +1,6 @@
 
 import { BrandLogo } from "@/components/layout/BrandLogo";
-import { NAV_LINKS } from "@/components/layout/navigation";
+import { NAV_GROUPS, NAV_LINKS } from "@/components/layout/navigation";
 
 export function LoadingShell({
   children,
@@ -14,19 +14,22 @@ export function LoadingShell({
           <div className="flex items-center gap-8">
             <BrandLogo variant="placeholder" />
             <nav className="hidden items-center gap-6 lg:flex">
-              {NAV_LINKS.map((link) => (
+              {NAV_GROUPS.map((group) => (
                 <span
-                  key={link.key}
+                  key={group.key}
                   className="whitespace-nowrap text-sm font-medium text-muted/70"
                 >
-                  {link.label}
+                  {group.label}
                 </span>
               ))}
             </nav>
           </div>
-          <span className="rounded-full bg-brand px-5 py-2 text-sm font-semibold text-white opacity-80">
-            Đăng nhập
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="rounded-full bg-brand px-5 py-2 text-sm font-semibold text-white opacity-80">
+              Đăng nhập
+            </span>
+            <span className="h-9 w-9 rounded-full border border-line lg:hidden" />
+          </div>
         </div>
         <nav className="no-scrollbar flex gap-5 overflow-x-auto border-t border-line/60 px-5 py-2 lg:hidden">
           {NAV_LINKS.map((link) => (

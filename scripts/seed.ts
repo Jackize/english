@@ -347,6 +347,20 @@ async function main() {
     },
   });
 
+  const adminEmail = process.env.ADMIN_EMAIL ?? "admin@eng-growth.app";
+  const adminPassword = process.env.ADMIN_PASSWORD ?? "admin1234";
+  const adminPasswordHash = await bcrypt.hash(adminPassword, 10);
+  await prisma.user.upsert({
+    where: { email: adminEmail },
+    update: { role: "ADMIN" },
+    create: {
+      email: adminEmail,
+      passwordHash: adminPasswordHash,
+      name: "Admin",
+      role: "ADMIN",
+    },
+  });
+
   let grammarCount = 0;
   let grammarQuestions = 0;
   let vocabCount = 0;
@@ -435,6 +449,7 @@ async function main() {
     console.log(`Removed ${removedTopics} stale A1 topic(s)`);
   }
   console.log("Demo user: demo@eng-growth.app / demo1234");
+  console.log(`Admin user: ${adminEmail} / ${adminPassword}`);
 }
 
 main()

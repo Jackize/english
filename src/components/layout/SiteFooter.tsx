@@ -50,11 +50,12 @@ export function SiteFooter() {
             <Link href="/review" className="block text-ink hover:text-brand">
               Ôn lại câu sai
             </Link>
-            {user ? (
+            {user?.role === "ADMIN" ? (
               <Link href="/admin" className="block text-ink hover:text-brand">
                 Quản trị
               </Link>
-            ) : (
+            ) : null}
+            {!user ? (
               <>
                 <Link href="/login" className="block text-ink hover:text-brand">
                   Đăng nhập
@@ -63,7 +64,7 @@ export function SiteFooter() {
                   Tạo tài khoản
                 </Link>
               </>
-            )}
+            ) : null}
           </div>
         </div>
       </div>

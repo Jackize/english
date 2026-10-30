@@ -303,6 +303,36 @@ export const getOverview = cache(async (userId?: string, levelCode?: LevelCode):
   };
 });
 
+export const getContinueLesson = cache(async (userId?: string) => {
+  if (!userId) return null;
+
+  const [levels, completedRows] = await Promise.all([
+    getCurriculumLevels(),
+    prisma.lessonProgress.findMany({
+      where: { userId, completed: true },
+      select: { lessonId: true },
+    }),
+  ]);
+
+  const completed = new Set(completedRows.map((row) => row.lessonId));
+
+  for (const level of levels) {
+    for (const lesson of level.lessons) {
+      if (completed.has(lesson.id)) continue;
+
+      return {
+        id: lesson.id,
+        title: lesson.title,
+        track: lesson.track === "vocabulary" ? ("vocabulary" as const) : ("grammar" as const),
+        levelCode: level.code as LevelCode,
+        levelName: level.name,
+      };
+    }
+  }
+
+  return null;
+});
+
 export async function getLessonForLearner(lessonId: string, userId?: string) {
   // Song song: lesson (query lớn, nhiều include) + progress (query nhỏ)
   const [lesson, progress] = await Promise.all([

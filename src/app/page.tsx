@@ -48,36 +48,38 @@ export default async function HomePage() {
             thành từng buổi học ngắn; câu trả lời chưa đúng được lưu lại để ôn tập.
           </p>
 
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Link
-              href={
-                dailyPlan && currentDay
-                  ? `/daily?level=${dailyPlan.levelCode}`
-                  : next
-                    ? `/lesson/${next.id}`
-                    : "/roadmap"
-              }
-              className="btn-primary inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-sm font-semibold"
-            >
-              {dailyPlan && currentDay
-                ? "Mục tiêu hôm nay"
-                : next
-                  ? "Học bài tiếp theo"
-                  : "Xem lộ trình"}
-              <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-            </Link>
-            <Link
-              href="/grammar"
-              className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-7 py-3.5 text-sm font-semibold text-ink transition-colors hover:border-brand/30 hover:text-brand"
-            >
-              Học ngữ pháp
-            </Link>
-            <Link
-              href="/vocabulary"
-              className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-7 py-3.5 text-sm font-semibold text-ink transition-colors hover:border-brand/30 hover:text-brand"
-            >
-              Học từ vựng
-            </Link>
+          <div className="mt-8 flex flex-col items-center gap-3">
+            {session?.user ? (
+              <Link
+                href={next ? `/lesson/${next.id}` : dailyPlan && currentDay ? `/daily?level=${dailyPlan.levelCode}` : "/review"}
+                className="btn-primary inline-flex max-w-full items-center gap-2 rounded-full px-7 py-3.5 text-center text-sm font-semibold"
+              >
+                <span>
+                  {next
+                    ? `Tiếp tục học: ${next.title}`
+                    : dailyPlan && currentDay
+                      ? "Tiếp tục kế hoạch hôm nay"
+                      : "Ôn tập câu sai"}
+                </span>
+                <span className="material-symbols-outlined shrink-0 text-[18px]">arrow_forward</span>
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/register"
+                  className="btn-primary inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-sm font-semibold"
+                >
+                  Bắt đầu học miễn phí
+                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                </Link>
+                <Link
+                  href="/login"
+                  className="text-sm font-medium text-muted transition-colors hover:text-brand"
+                >
+                  Đã có tài khoản? Đăng nhập
+                </Link>
+              </>
+            )}
           </div>
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs text-muted">
@@ -185,13 +187,6 @@ export default async function HomePage() {
                         <h2 className="display text-3xl text-ink md:text-[34px]">{next.title}</h2>
                         <p className="mt-2 max-w-xl text-sm text-muted">{next.summary}</p>
                       </div>
-                      <Link
-                        href={`/lesson/${next.id}`}
-                        className="btn-primary inline-flex flex-shrink-0 items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold"
-                      >
-                        Học ngay
-                        <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-                      </Link>
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-2">
@@ -381,21 +376,6 @@ export default async function HomePage() {
             <p className="mx-auto mt-2 max-w-xl text-sm text-muted">
               Câu trả lời sai được ghi lại và đưa vào mục ôn tập — bạn không phải nhớ mình đã sai ở đâu.
             </p>
-            <div className="mt-5 flex flex-wrap justify-center gap-3">
-              <Link
-                href={session?.user ? (next ? `/lesson/${next.id}` : "/review") : "/register"}
-                className="btn-primary inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold"
-              >
-                {session?.user ? "Tiếp tục học" : "Tạo tài khoản miễn phí"}
-                <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-              </Link>
-              <Link
-                href="/login"
-                className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-6 py-3 text-sm font-semibold text-ink hover:border-brand/30"
-              >
-                Tài khoản demo
-              </Link>
-            </div>
           </div>
         </section>
       </main>

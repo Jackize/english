@@ -2,9 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useToast } from "@/components/ui/Toast";
 
 export function DeleteLessonButton({ lessonId, title }: { lessonId: string; title: string }) {
   const router = useRouter();
+  const { showToast } = useToast();
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -13,10 +15,17 @@ export function DeleteLessonButton({ lessonId, title }: { lessonId: string; titl
     try {
       const response = await fetch(`/api/admin/lessons/${lessonId}`, { method: "DELETE" });
       if (!response.ok) throw new Error("delete failed");
+      showToast({ variant: "success", title: "Đã xoá bài học" });
       router.refresh();
     } catch {
       setDeleting(false);
       setConfirming(false);
+      showToast({
+        variant: "error",
+        title: "Không xoá được bài học",
+        description: "Vui lòng thử lại sau.",
+        action: { label: "Thử lại", onClick: () => void remove() },
+      });
     }
   }
 

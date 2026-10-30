@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useToast } from "@/components/ui/Toast";
 
 export interface AdminLessonData {
   id: string;
@@ -83,6 +84,7 @@ export function LessonEditor({
   levels: LevelOption[];
 }) {
   const router = useRouter();
+  const { showToast } = useToast();
   const [title, setTitle] = useState(lesson.title);
   const [summary, setSummary] = useState(lesson.summary);
   const [levelId, setLevelId] = useState(lesson.levelId);
@@ -257,11 +259,16 @@ export function LessonEditor({
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Không thể lưu bài học");
       setMessage({ type: "ok", text: "Đã lưu bài học." });
+      showToast({ variant: "success", title: "Đã lưu bài học" });
       router.refresh();
     } catch (caught) {
-      setMessage({
-        type: "error",
-        text: caught instanceof Error ? caught.message : "Không thể lưu bài học",
+      const text = caught instanceof Error ? caught.message : "Không thể lưu bài học";
+      setMessage({ type: "error", text });
+      showToast({
+        variant: "error",
+        title: "Không lưu được bài học",
+        description: text,
+        action: { label: "Thử lại", onClick: () => void save() },
       });
     } finally {
       setSaving(false);

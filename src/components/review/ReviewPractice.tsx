@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import type { getReviewItems } from "@/lib/learning";
 import { ProgressBar } from "@/components/ui/Progress";
+import { useToast } from "@/components/ui/Toast";
 
 type ReviewItem = Awaited<ReturnType<typeof getReviewItems>>[number];
 
@@ -15,6 +16,7 @@ interface Feedback {
 }
 
 export function ReviewPractice({ items: initialItems }: { items: ReviewItem[] }) {
+  const { showToast } = useToast();
   const [remaining, setRemaining] = useState(initialItems);
   const [round, setRound] = useState(initialItems);
   const [index, setIndex] = useState(0);
@@ -50,6 +52,12 @@ export function ReviewPractice({ items: initialItems }: { items: ReviewItem[] })
       }
     } catch {
       setSelected(null);
+      showToast({
+        variant: "error",
+        title: "Không gửi được câu trả lời",
+        description: "Kiểm tra kết nối mạng rồi thử lại.",
+        action: { label: "Thử lại", onClick: () => void choose(choiceId) },
+      });
     } finally {
       setSending(false);
     }

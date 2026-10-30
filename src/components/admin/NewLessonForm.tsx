@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useToast } from "@/components/ui/Toast";
 
 interface LevelOption {
   id: string;
@@ -20,6 +21,7 @@ export function NewLessonForm({
   initialTrack?: "grammar" | "vocabulary";
 }) {
   const router = useRouter();
+  const { showToast } = useToast();
   const [levelId, setLevelId] = useState(initialLevelId ?? levels[0]?.id ?? "");
   const [track, setTrack] = useState<"grammar" | "vocabulary">(initialTrack ?? "grammar");
   const [title, setTitle] = useState("");
@@ -40,8 +42,15 @@ export function NewLessonForm({
       if (!response.ok) throw new Error(data.error ?? "Không thể tạo bài học");
       router.push(`/admin/lessons/${data.id}`);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Không thể tạo bài học");
+      const message = caught instanceof Error ? caught.message : "Không thể tạo bài học";
+      setError(message);
       setLoading(false);
+      showToast({
+        variant: "error",
+        title: "Không tạo được bài học",
+        description: message,
+        action: { label: "Thử lại", onClick: () => void create() },
+      });
     }
   }
 

@@ -31,6 +31,47 @@ body {
   color: #14532d;
 }
 
+/* Focus ring dùng chung cho toàn bộ phần tử tương tác. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+/* Trên mobile, nâng các nhãn 9–11px lên tối thiểu 12px để dễ đọc. */
+@media (max-width: 640px) {
+  .text-\[9px\] {
+    font-size: 0.75rem;
+    line-height: 1rem;
+  }
+
+  .text-\[10px\] {
+    font-size: 0.75rem;
+    line-height: 1rem;
+  }
+
+  .text-\[11px\] {
+    font-size: 0.75rem;
+    line-height: 1.05rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 .material-symbols-outlined {
   font-family: var(--font-material-symbols), "Material Symbols Outlined", sans-serif;
   font-weight: normal;

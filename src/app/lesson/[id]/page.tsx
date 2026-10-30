@@ -35,7 +35,7 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
     <div className="flex min-h-screen flex-col">
       <SiteHeader active={lesson.track === "grammar" ? "grammar" : "vocabulary"} />
       <main className="flex-1">
-        <LessonExperience lesson={lesson} />
+        <LessonExperience lesson={lesson} canSave={Boolean(session?.user)} />
       </main>
       <SiteFooter />
     </div>

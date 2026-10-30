@@ -2,11 +2,20 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LearnerLesson } from "@/lib/learning";
 import { ProgressBar } from "@/components/ui/Progress";
+import { useToast } from "@/components/ui/Toast";
 
 type Tab = "learn" | "quiz";
+
+interface QuestionFeedback {
+  correct: boolean;
+  selectedChoiceId: string;
+  correctChoiceId: string;
+  correctLabel: string;
+  explanation: string | null;
+}
 
 interface QuizResult {
   score: number;
@@ -82,8 +91,15 @@ function speak(text: string) {
   window.speechSynthesis.speak(utterance);
 }
 
-export function LessonExperience({ lesson }: { lesson: LearnerLesson }) {
+export function LessonExperience({
+  lesson,
+  canSave = false,
+}: {
+  lesson: LearnerLesson;
+  canSave?: boolean;
+}) {
   const router = useRouter();
+  const { showToast } = useToast();
   const [tab, setTab] = useState<Tab>("learn");
   const [theoryDone, setTheoryDone] = useState(lesson.progress.theoryDone);
   const [marking, setMarking] = useState(false);
@@ -91,32 +107,117 @@ export function LessonExperience({ lesson }: { lesson: LearnerLesson }) {
   const [quizStarted, setQuizStarted] = useState(false);
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [feedback, setFeedback] = useState<Record<string, QuestionFeedback>>({});
+  const [checking, setChecking] = useState<Record<string, boolean>>({});
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<QuizResult | null>(null);
+
+  const lessonEndRef = useRef<HTMLDivElement | null>(null);
+  const markingRef = useRef(false);
 
   const totalQuestions = lesson.questions.length;
   const answeredCount = Object.keys(answers).length;
   const question = lesson.questions[current];
   const selected = question ? answers[question.id] : undefined;
+  const questionFeedback = question ? feedback[question.id] : undefined;
+  const checkingAnswer = question ? Boolean(checking[question.id]) : false;
 
   const scorePercent = useMemo(
     () => (lesson.progress.quizTotal ? (lesson.progress.bestScore / lesson.progress.quizTotal) * 100 : 0),
     [lesson.progress],
   );
 
-  async function markTheoryDone() {
-    if (theoryDone || marking) return;
+  const markTheoryDone = useCallback(async () => {
+    if (!canSave || theoryDone || markingRef.current) return;
+    markingRef.current = true;
     setMarking(true);
     try {
-      await fetch(`/api/lessons/${lesson.id}/theory`, { method: "POST" });
+      const response = await fetch(`/api/lessons/${lesson.id}/theory`, { method: "POST" });
+      if (!response.ok) throw new Error("Cannot save theory progress");
       setTheoryDone(true);
       router.refresh();
+    } catch {
+      showToast({
+        variant: "error",
+        title: "Chưa lưu được tiến độ",
+        description: "Kết nối có thể bị gián đoạn. Bạn vẫn có thể bấm nút đánh dấu để thử lại.",
+        action: { label: "Thử lại", onClick: () => void markTheoryDone() },
+      });
     } finally {
+      markingRef.current = false;
       setMarking(false);
+    }
+  }, [canSave, lesson.id, router, showToast, theoryDone]);
+
+  // Tự ghi nhận lý thuyết khi người học đọc đến cuối bài (sentinel cuối trang).
+  useEffect(() => {
+    if (!canSave || theoryDone || tab !== "learn") return;
+    const node = lessonEndRef.current;
+    if (!node || typeof IntersectionObserver === "undefined") return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          observer.disconnect();
+          void markTheoryDone();
+        }
+      },
+      { rootMargin: "0px 0px -15% 0px", threshold: 0.2 },
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [canSave, markTheoryDone, tab, theoryDone]);
+
+  // Fallback: nếu người học đọc lâu mà chưa cuộn hết, tự ghi nhận sau 30 giây.
+  useEffect(() => {
+    if (!canSave || theoryDone || tab !== "learn") return;
+    const timer = window.setTimeout(() => {
+      void markTheoryDone();
+    }, 30_000);
+    return () => window.clearTimeout(timer);
+  }, [canSave, markTheoryDone, tab, theoryDone]);
+
+  async function choose(choiceId: string) {
+    if (!question || answers[question.id] || checking[question.id]) return;
+
+    const questionId = question.id;
+    setAnswers((previous) => ({ ...previous, [questionId]: choiceId }));
+    setChecking((previous) => ({ ...previous, [questionId]: true }));
+
+    try {
+      const response = await fetch(`/api/lessons/${lesson.id}/answer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ questionId, choiceId }),
+      });
+      if (!response.ok) throw new Error("Cannot check answer");
+      const data = (await response.json()) as QuestionFeedback;
+      setFeedback((previous) => ({ ...previous, [questionId]: data }));
+    } catch {
+      // Cho phép chọn lại nếu không kiểm tra được đáp án.
+      setAnswers((previous) => {
+        const next = { ...previous };
+        delete next[questionId];
+        return next;
+      });
+      showToast({
+        variant: "error",
+        title: "Không kiểm tra được đáp án",
+        description: "Kiểm tra kết nối mạng rồi chọn lại đáp án.",
+        action: { label: "Thử lại", onClick: () => void choose(choiceId) },
+      });
+    } finally {
+      setChecking((previous) => {
+        const next = { ...previous };
+        delete next[questionId];
+        return next;
+      });
     }
   }
 
   function goToQuiz() {
+    void markTheoryDone();
     setTab("quiz");
     setTimeout(() => {
       document.getElementById("lesson-tabs")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -139,6 +240,12 @@ export function LessonExperience({ lesson }: { lesson: LearnerLesson }) {
       router.refresh();
     } catch {
       // Keep the quiz state so the learner can try submitting again.
+      showToast({
+        variant: "error",
+        title: "Chưa nộp được bài",
+        description: "Bài làm của bạn vẫn được giữ. Hãy thử lại.",
+        action: { label: "Thử lại", onClick: () => void submit() },
+      });
     } finally {
       setSubmitting(false);
     }
@@ -147,6 +254,8 @@ export function LessonExperience({ lesson }: { lesson: LearnerLesson }) {
   function restart() {
     setResult(null);
     setAnswers({});
+    setFeedback({});
+    setChecking({});
     setCurrent(0);
     setQuizStarted(false);
   }
@@ -218,9 +327,45 @@ export function LessonExperience({ lesson }: { lesson: LearnerLesson }) {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div id="lesson-tabs" className="sticky top-[100px] z-40 border-b border-line bg-background/95 backdrop-blur lg:top-16">
-        <div className="mx-auto flex w-full max-w-[1120px] gap-6 px-5 md:px-8">
+      {/* Tabs: mobile là segmented control không sticky; desktop mới sticky. */}
+      <div
+        id="lesson-tabs"
+        className="scroll-mt-32 border-b border-line bg-background/95 backdrop-blur lg:sticky lg:top-16 lg:z-40 lg:scroll-mt-20"
+      >
+        <div className="mx-auto w-full max-w-[1120px] px-5 py-3 lg:hidden">
+          <div className="grid grid-cols-2 gap-1 rounded-full border border-line bg-surface-muted p-1">
+            <button
+              type="button"
+              onClick={() => setTab("learn")}
+              className={`flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition-colors ${
+                tab === "learn" ? "bg-surface text-ink shadow-sm" : "text-muted"
+              }`}
+            >
+              <span className="material-symbols-outlined text-[16px]">menu_book</span>
+              Học kiến thức
+              {theoryDone ? (
+                <span className="material-symbols-outlined text-[14px] text-brand">check_circle</span>
+              ) : null}
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("quiz")}
+              className={`flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition-colors ${
+                tab === "quiz" ? "bg-surface text-ink shadow-sm" : "text-muted"
+              }`}
+            >
+              <span className="material-symbols-outlined text-[16px]">quiz</span>
+              Kiểm tra
+              {lesson.progress.bestScore > 0 ? (
+                <span className="rounded-full bg-brand-soft px-1.5 py-0.5 text-[9px] font-bold text-brand">
+                  {lesson.progress.bestScore}/{lesson.progress.quizTotal}
+                </span>
+              ) : null}
+            </button>
+          </div>
+        </div>
+
+        <div className="mx-auto hidden w-full max-w-[1120px] gap-6 px-5 md:px-8 lg:flex">
           <button
             type="button"
             onClick={() => setTab("learn")}
@@ -335,20 +480,31 @@ export function LessonExperience({ lesson }: { lesson: LearnerLesson }) {
                 </section>
               ) : null}
 
-              <div className="flex flex-col justify-between gap-3 rounded-2xl border border-line bg-surface p-5 sm:flex-row sm:items-center">
+              <div
+                ref={lessonEndRef}
+                className="flex flex-col justify-between gap-3 rounded-2xl border border-line bg-surface p-5 sm:flex-row sm:items-center"
+              >
                 <div>
                   <div className="text-sm font-semibold text-ink">
-                    {theoryDone ? "Bạn đã đánh dấu học xong phần này." : "Đã nắm nội dung?"}
+                    {theoryDone
+                      ? "Đã ghi nhận bạn học xong phần lý thuyết."
+                      : marking
+                        ? "Đang ghi nhận tiến độ..."
+                        : "Đã nắm nội dung?"}
                   </div>
                   <div className="text-xs text-muted">
-                    Đánh dấu để theo dõi tiến độ, sau đó làm bài kiểm tra.
+                    {!canSave
+                      ? "Đăng nhập để hệ thống lưu tiến độ học của bạn."
+                      : theoryDone
+                        ? "Bạn có thể làm bài kiểm tra để hoàn thành bài học."
+                        : "Hệ thống tự ghi nhận khi bạn đọc đến cuối bài hoặc sau 30 giây. Bạn vẫn có thể bấm nút để đánh dấu ngay."}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={markTheoryDone}
-                    disabled={theoryDone || marking}
+                    disabled={theoryDone || marking || !canSave}
                     className={`inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-colors ${
                       theoryDone
                         ? "bg-brand-soft text-brand"
@@ -358,7 +514,7 @@ export function LessonExperience({ lesson }: { lesson: LearnerLesson }) {
                     <span className="material-symbols-outlined text-[18px]">
                       {theoryDone ? "check_circle" : "task_alt"}
                     </span>
-                    {theoryDone ? "Đã học xong" : "Đánh dấu đã học"}
+                    {marking ? "Đang lưu..." : theoryDone ? "Đã học xong" : "Đánh dấu đã học"}
                   </button>
                   <button
                     type="button"
@@ -581,33 +737,87 @@ export function LessonExperience({ lesson }: { lesson: LearnerLesson }) {
                 <div className="mt-6 space-y-2.5">
                   {question.choices.map((choice, index) => {
                     const active = selected === choice.id;
+                    const showCorrect = questionFeedback?.correctChoiceId === choice.id;
+                    const showWrong = questionFeedback ? active && !questionFeedback.correct : false;
+                    const locked = Boolean(questionFeedback) || checkingAnswer;
+
                     return (
                       <button
                         key={choice.id}
                         type="button"
-                        onClick={() =>
-                          setAnswers((previous) => ({ ...previous, [question.id]: choice.id }))
-                        }
-                        className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all ${
-                          active
+                        disabled={locked}
+                        onClick={() => choose(choice.id)}
+                        className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all disabled:cursor-default ${
+                          showCorrect
                             ? "border-brand bg-brand-soft"
-                            : "border-line bg-surface hover:border-brand/30 hover:bg-surface-muted/40"
+                            : showWrong
+                              ? "border-danger/40 bg-[#fde8e6]"
+                              : active
+                                ? "border-brand bg-brand-soft/60"
+                                : "border-line bg-surface hover:border-brand/30 hover:bg-surface-muted/40"
                         }`}
                       >
                         <span
                           className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
-                            active ? "bg-brand text-white" : "bg-surface-muted text-muted"
+                            showCorrect
+                              ? "bg-brand text-white"
+                              : showWrong
+                                ? "bg-danger text-white"
+                                : active
+                                  ? "bg-brand text-white"
+                                  : "bg-surface-muted text-muted"
                           }`}
                         >
                           {String.fromCharCode(65 + index)}
                         </span>
-                        <span className={`text-sm ${active ? "font-semibold text-ink" : "text-ink"}`}>
-                          {choice.label}
-                        </span>
+                        <span className="text-sm text-ink">{choice.label}</span>
+                        {showCorrect ? (
+                          <span className="material-symbols-outlined ml-auto text-[18px] text-brand">
+                            check_circle
+                          </span>
+                        ) : showWrong ? (
+                          <span className="material-symbols-outlined ml-auto text-[18px] text-danger">
+                            cancel
+                          </span>
+                        ) : null}
                       </button>
                     );
                   })}
                 </div>
+
+                {questionFeedback ? (
+                  <div
+                    className={`mt-5 rounded-xl border p-4 ${
+                      questionFeedback.correct
+                        ? "border-brand/20 bg-brand-soft/50"
+                        : "border-danger/20 bg-[#fdf2f1]"
+                    }`}
+                  >
+                    <div
+                      className={`flex items-center gap-2 text-sm font-semibold ${
+                        questionFeedback.correct ? "text-brand" : "text-danger"
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-[18px]">
+                        {questionFeedback.correct ? "check_circle" : "cancel"}
+                      </span>
+                      {questionFeedback.correct ? "Chính xác!" : "Chưa đúng"}
+                    </div>
+                    {!questionFeedback.correct ? (
+                      <p className="mt-1 text-xs text-ink">
+                        Đáp án đúng:{" "}
+                        <span className="font-semibold">{questionFeedback.correctLabel}</span>
+                      </p>
+                    ) : null}
+                    {questionFeedback.explanation ? (
+                      <p className="mt-2 text-xs leading-relaxed text-muted">
+                        {questionFeedback.explanation}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : checkingAnswer ? (
+                  <p className="mt-4 text-xs text-muted">Đang kiểm tra đáp án...</p>
+                ) : null}
 
                 <div className="mt-7 flex items-center justify-between gap-3">
                   <button

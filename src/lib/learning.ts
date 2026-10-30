@@ -306,13 +306,36 @@ export const getOverview = cache(async (userId?: string, levelCode?: LevelCode):
 export const getContinueLesson = cache(async (userId?: string) => {
   if (!userId) return null;
 
-  const [levels, completedRows] = await Promise.all([
+  const [levels, completedRows, inProgress] = await Promise.all([
     getCurriculumLevels(),
     prisma.lessonProgress.findMany({
       where: { userId, completed: true },
       select: { lessonId: true },
     }),
+    // Ưu tiên bài đang học dở gần nhất, thay vì luôn quay về bài đầu tiên chưa xong.
+    prisma.lessonProgress.findFirst({
+      where: {
+        userId,
+        completed: false,
+        OR: [{ theoryDone: true }, { bestScore: { gt: 0 } }],
+      },
+      orderBy: { updatedAt: "desc" },
+      include: { lesson: { include: { level: true } } },
+    }),
   ]);
+
+  if (inProgress) {
+    return {
+      id: inProgress.lesson.id,
+      title: inProgress.lesson.title,
+      track:
+        inProgress.lesson.track === "vocabulary"
+          ? ("vocabulary" as const)
+          : ("grammar" as const),
+      levelCode: inProgress.lesson.level.code as LevelCode,
+      levelName: inProgress.lesson.level.name,
+    };
+  }
 
   const completed = new Set(completedRows.map((row) => row.lessonId));
 

@@ -7,9 +7,11 @@ import { signIn } from "next-auth/react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { BrandLogo } from "@/components/layout/BrandLogo";
+import { useToast } from "@/components/ui/Toast";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { showToast } = useToast();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,30 +23,47 @@ export default function RegisterPage() {
     setLoading(true);
     setError("");
 
-    const res = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
-    });
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      });
 
-    if (!res.ok) {
-      const data = await res.json();
-      setError(data.error === "Email already registered" ? "Email này đã được đăng ký." : "Đăng ký thất bại. Vui lòng thử lại.");
+      if (!res.ok) {
+        const data = await res.json();
+        const message =
+          data.error === "Email already registered"
+            ? "Email này đã được đăng ký."
+            : "Đăng ký thất bại. Vui lòng thử lại.";
+        setError(message);
+        showToast({ variant: "error", title: "Không thể đăng ký", description: message });
+        setLoading(false);
+        return;
+      }
+
+      const result = await signIn("credentials", { email, password, redirect: false });
       setLoading(false);
-      return;
+
+      if (result?.error) {
+        setError("Tài khoản đã tạo nhưng đăng nhập thất bại. Hãy đăng nhập lại.");
+        router.push("/login");
+        return;
+      }
+
+      showToast({ variant: "success", title: "Tạo tài khoản thành công" });
+      router.push("/");
+      router.refresh();
+    } catch {
+      setLoading(false);
+      const message = "Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.";
+      setError(message);
+      showToast({
+        variant: "error",
+        title: "Không thể đăng ký",
+        description: message,
+      });
     }
-
-    const result = await signIn("credentials", { email, password, redirect: false });
-    setLoading(false);
-
-    if (result?.error) {
-      setError("Tài khoản đã tạo nhưng đăng nhập thất bại. Hãy đăng nhập lại.");
-      router.push("/login");
-      return;
-    }
-
-    router.push("/");
-    router.refresh();
   }
 
   return (

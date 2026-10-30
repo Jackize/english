@@ -22,19 +22,24 @@ function LoginForm() {
     setLoading(true);
     setError("");
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
 
-    setLoading(false);
-    if (result?.error) {
-      setError("Email hoặc mật khẩu không đúng.");
-      return;
+      if (result?.error) {
+        setError("Email hoặc mật khẩu không đúng.");
+        return;
+      }
+      router.push(callbackUrl);
+      router.refresh();
+    } catch {
+      setError("Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.");
+    } finally {
+      setLoading(false);
     }
-    router.push(callbackUrl);
-    router.refresh();
   }
 
   function fillDemo() {

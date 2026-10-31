@@ -5,6 +5,7 @@ import { getOverview } from "@/lib/learning";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { DailyTaskRow } from "@/components/learning/DailyTaskRow";
+import { DailyGoalCard } from "@/components/learning/DailyGoalCard";
 import { ProgressBar } from "@/components/ui/Progress";
 
 export default async function DailyPage({
@@ -96,6 +97,16 @@ export default async function DailyPage({
             ))}
           </div>
         </section>
+
+        {session?.user ? (
+          <section className="mx-auto w-full max-w-[1120px] px-5 pb-6 md:px-8">
+            <DailyGoalCard
+              goal={overview.dailyGoal}
+              streak={overview.streak}
+              xp={overview.xp}
+            />
+          </section>
+        ) : null}
 
         <section className="mx-auto w-full max-w-[1120px] px-5 pb-20 md:px-8">
           {plan && plan.currentDay ? (

@@ -52,7 +52,7 @@ export default function RegisterPage() {
       }
 
       showToast({ variant: "success", title: "Tạo tài khoản thành công" });
-      router.push("/");
+      router.push("/onboarding");
       router.refresh();
     } catch {
       setLoading(false);

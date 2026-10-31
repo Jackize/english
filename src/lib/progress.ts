@@ -108,6 +108,7 @@ export async function submitQuiz(
         bestScore: score,
         quizTotal: total,
         completed: passed,
+        completedAt: passed ? new Date() : null,
       },
       update: {
         theoryDone: true,
@@ -115,6 +116,12 @@ export async function submitQuiz(
         bestScore: Math.max(existing?.bestScore ?? 0, score),
         quizTotal: total,
         completed: existing?.completed || passed,
+        completedAt:
+          existing?.completed && existing.completedAt
+            ? existing.completedAt
+            : passed
+              ? new Date()
+              : null,
       },
     });
 
@@ -130,29 +137,32 @@ export async function submitQuiz(
     }
 
     for (const detail of details) {
-      if (detail.correct) {
-        await tx.reviewItem.updateMany({
-          where: { userId, questionId: detail.questionId, resolved: false },
-          data: { resolved: true },
-        });
-      } else {
-        await tx.reviewItem.upsert({
-          where: {
-            userId_questionId: { userId, questionId: detail.questionId },
-          },
-          create: {
-            userId,
-            questionId: detail.questionId,
-            wrongCount: 1,
-            resolved: false,
-          },
-          update: {
-            wrongCount: { increment: 1 },
-            resolved: false,
-            lastWrongAt: new Date(),
-          },
-        });
-      }
+      if (detail.correct) continue;
+
+      // Sai trong bài kiểm tra cũng đưa câu vào lịch ôn ngay hôm nay.
+      // Đúng trong bài kiểm tra không tự xoá lịch ôn — chỉ lượt ôn mới
+      // quyết định mốc giãn cách tiếp theo.
+      const now = new Date();
+      await tx.reviewItem.upsert({
+        where: {
+          userId_questionId: { userId, questionId: detail.questionId },
+        },
+        create: {
+          userId,
+          questionId: detail.questionId,
+          wrongCount: 1,
+          resolved: false,
+          dueAt: now,
+        },
+        update: {
+          wrongCount: { increment: 1 },
+          resolved: false,
+          lastWrongAt: now,
+          intervalDays: 0,
+          correctStreak: 0,
+          dueAt: now,
+        },
+      });
     }
   });
 
@@ -168,6 +178,21 @@ export async function submitQuiz(
   };
 }
 
+// Các mốc ôn tập giãn cách (ngày). Đúng thì tiến một mốc, sai thì quay về mốc đầu.
+export const REVIEW_INTERVALS = [1, 3, 7, 14, 30] as const;
+
+function nextReviewInterval(current: number) {
+  const index = REVIEW_INTERVALS.indexOf(current as (typeof REVIEW_INTERVALS)[number]);
+  if (index === -1) return REVIEW_INTERVALS[0];
+  return REVIEW_INTERVALS[Math.min(index + 1, REVIEW_INTERVALS.length - 1)];
+}
+
+function addDays(date: Date, days: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
 export async function answerReviewItem(userId: string, reviewItemId: string, choiceId: string) {
   const item = await prisma.reviewItem.findFirst({
     where: { id: reviewItemId, userId, resolved: false },
@@ -179,13 +204,44 @@ export async function answerReviewItem(userId: string, reviewItemId: string, cho
   const selected = item.question.choices.find((choice) => choice.id === choiceId);
   const correct = item.question.choices.find((choice) => choice.isCorrect);
   const isCorrect = Boolean(selected?.isCorrect);
+  const now = new Date();
+
+  let intervalDays = 0;
+  let dueAt = now;
+  let mastered = false;
 
   if (isCorrect) {
+    // Đã đạt mốc 30 ngày và trả lời đúng lần nữa => coi như đã khắc sâu.
+    mastered = item.intervalDays >= REVIEW_INTERVALS[REVIEW_INTERVALS.length - 1];
+    intervalDays = mastered
+      ? item.intervalDays
+      : nextReviewInterval(item.intervalDays);
+    dueAt = mastered ? now : addDays(now, intervalDays);
+
     await prisma.reviewItem.update({
       where: { id: item.id },
-      data: { resolved: true },
+      data: {
+        resolved: mastered,
+        intervalDays,
+        correctStreak: { increment: 1 },
+        lastReviewedAt: now,
+        dueAt,
+      },
     });
     await touchStreak(userId);
+  } else {
+    await prisma.reviewItem.update({
+      where: { id: item.id },
+      data: {
+        resolved: false,
+        intervalDays: 0,
+        correctStreak: 0,
+        wrongCount: { increment: 1 },
+        lastWrongAt: now,
+        lastReviewedAt: now,
+        dueAt: now,
+      },
+    });
   }
 
   return {
@@ -194,5 +250,8 @@ export async function answerReviewItem(userId: string, reviewItemId: string, cho
     correctLabel: correct?.label ?? "",
     selectedLabel: selected?.label ?? "",
     explanation: item.question.explanation,
+    intervalDays,
+    dueAt: dueAt.toISOString(),
+    mastered,
   };
 }

@@ -1,5 +1,5 @@
 import { getSession } from "@/lib/auth";
-import { getContinueLesson } from "@/lib/learning";
+import { getContinueLesson, getHeaderStats } from "@/lib/learning";
 import { HeaderBar } from "./HeaderBar";
 import type { NavKey } from "./navigation";
 
@@ -8,7 +8,9 @@ export type { NavKey };
 export async function SiteHeader({ active }: { active?: NavKey }) {
   const session = await getSession();
   const user = session?.user ?? null;
-  const continueLesson = user ? await getContinueLesson(user.id) : null;
+  const [continueLesson, stats] = user
+    ? await Promise.all([getContinueLesson(user.id), getHeaderStats(user.id)])
+    : [null, null];
 
   return (
     <HeaderBar
@@ -19,6 +21,7 @@ export async function SiteHeader({ active }: { active?: NavKey }) {
               name: user.name ?? null,
               email: user.email ?? null,
               role: user.role,
+              streak: stats?.streak ?? 0,
             }
           : null
       }

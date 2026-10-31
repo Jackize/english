@@ -13,6 +13,9 @@ interface Feedback {
   correctLabel: string;
   selectedLabel: string;
   explanation: string | null;
+  intervalDays: number;
+  dueAt: string;
+  mastered: boolean;
 }
 
 export function ReviewPractice({ items: initialItems }: { items: ReviewItem[] }) {
@@ -39,12 +42,7 @@ export function ReviewPractice({ items: initialItems }: { items: ReviewItem[] })
         body: JSON.stringify({ itemId: item.id, choiceId }),
       });
       if (!response.ok) throw new Error("Review failed");
-      const data = (await response.json()) as {
-        correct: boolean;
-        correctLabel: string;
-        selectedLabel: string;
-        explanation: string | null;
-      };
+      const data = (await response.json()) as Feedback;
       setFeedback(data);
       if (data.correct) {
         setCorrectCount((value) => value + 1);
@@ -88,10 +86,10 @@ export function ReviewPractice({ items: initialItems }: { items: ReviewItem[] })
         <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-soft text-brand">
           <span className="material-symbols-outlined text-[30px]">verified</span>
         </span>
-        <h2 className="display mt-4 text-3xl text-ink">Không có câu nào cần ôn</h2>
+        <h2 className="display mt-4 text-3xl text-ink">Hôm nay không có câu nào đến hạn</h2>
         <p className="mt-2 text-sm leading-relaxed text-muted">
-          Những câu bạn trả lời sai trong bài kiểm tra sẽ xuất hiện ở đây. Hãy tiếp tục học và quay
-          lại sau.
+          Câu sai được đưa vào lịch ôn giãn cách 1 → 3 → 7 → 14 → 30 ngày. Khi đến hạn, câu hỏi sẽ
+          xuất hiện lại ở đây.
         </p>
         <Link
           href="/roadmap"
@@ -113,11 +111,13 @@ export function ReviewPractice({ items: initialItems }: { items: ReviewItem[] })
           </span>
         </span>
         <h2 className="display mt-4 text-3xl text-ink">
-          {stillWrong === 0 ? "Đã xử lý hết câu sai!" : "Hết một vòng ôn tập"}
+          {stillWrong === 0 ? "Hoàn thành lượt ôn hôm nay!" : "Hết một vòng ôn tập"}
         </h2>
         <p className="mt-2 text-sm text-muted">
           Vòng này bạn trả lời đúng {correctCount}/{round.length} câu.
-          {stillWrong > 0 ? ` Còn ${stillWrong} câu cần ôn lại.` : ""}
+          {stillWrong > 0
+            ? ` Còn ${stillWrong} câu cần ôn lại ngay.`
+            : " Các câu đúng đã được lên lịch ôn tiếp theo."}
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           {stillWrong > 0 ? (
@@ -147,7 +147,7 @@ export function ReviewPractice({ items: initialItems }: { items: ReviewItem[] })
         <span>
           Câu {index + 1}/{round.length}
         </span>
-        <span>Còn {remaining.length} câu chưa xử lý</span>
+        <span>Còn {remaining.length} câu trong lượt này</span>
       </div>
       <ProgressBar value={((index + (feedback ? 1 : 0)) / round.length) * 100} />
 
@@ -159,6 +159,11 @@ export function ReviewPractice({ items: initialItems }: { items: ReviewItem[] })
           <span className="rounded-md bg-[#fdf3e2] px-2 py-0.5 text-[11px] font-semibold text-gold">
             Đã sai {item.wrongCount} lần
           </span>
+          {item.intervalDays > 0 ? (
+            <span className="rounded-md bg-surface-muted px-2 py-0.5 text-[11px] font-semibold text-muted">
+              Mốc ôn {item.intervalDays} ngày
+            </span>
+          ) : null}
         </div>
 
         <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-brand">
@@ -241,6 +246,13 @@ export function ReviewPractice({ items: initialItems }: { items: ReviewItem[] })
             {feedback.explanation ? (
               <p className="mt-2 text-xs leading-relaxed text-muted">{feedback.explanation}</p>
             ) : null}
+            <p className="mt-2 text-[11px] font-semibold text-muted">
+              {!feedback.correct
+                ? "Câu này sẽ quay lại ở vòng ôn tiếp theo trong hôm nay."
+                : feedback.mastered
+                  ? "Bạn đã khắc sâu câu này — câu sẽ rời khỏi danh sách ôn."
+                  : `Lần ôn tiếp theo sau ${feedback.intervalDays} ngày.`}
+            </p>
           </div>
         ) : null}
 

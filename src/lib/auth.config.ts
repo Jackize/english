@@ -20,7 +20,7 @@ export const authConfig: NextAuthConfig = {
         return auth?.user?.role === "ADMIN";
       }
 
-      const protectedPaths = ["/lesson", "/review"];
+      const protectedPaths = ["/lesson", "/review", "/onboarding", "/settings"];
       const isProtected = protectedPaths.some((p) => pathname.startsWith(p));
 
       if (isProtected) return isLoggedIn;

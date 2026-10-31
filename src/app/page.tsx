@@ -6,6 +6,7 @@ import { LEVEL_META, TRACK_META } from "@/lib/curriculum";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { DailyTaskRow } from "@/components/learning/DailyTaskRow";
+import { DailyGoalCard } from "@/components/learning/DailyGoalCard";
 import { PlantGrowth } from "@/components/learning/PlantGrowth";
 import { ProgressBar, LevelBadge } from "@/components/ui/Progress";
 
@@ -97,6 +98,42 @@ export default async function HomePage() {
             </span>
           </div>
         </section>
+
+        {/* Daily goal */}
+        {session?.user ? (
+          <section className="mx-auto w-full max-w-[1120px] px-5 pb-6 md:px-8">
+            <DailyGoalCard
+              goal={overview.dailyGoal}
+              streak={overview.streak}
+              xp={overview.xp}
+            />
+          </section>
+        ) : null}
+
+        {/* Onboarding reminder */}
+        {session?.user && !overview.onboarding.completed ? (
+          <section className="mx-auto w-full max-w-[1120px] px-5 pb-6 md:px-8">
+            <div className="flex flex-col gap-4 rounded-2xl border border-brand/20 bg-brand-soft/40 p-5 sm:flex-row sm:items-center sm:justify-between md:p-6">
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand">
+                  Thiết lập lộ trình
+                </div>
+                <h2 className="display mt-1 text-2xl text-ink">Cá nhân hóa kế hoạch học của bạn</h2>
+                <p className="mt-1 max-w-xl text-xs leading-relaxed text-muted">
+                  Chọn mục tiêu, thời gian mỗi ngày và làm bài kiểm tra ngắn để biết nên bắt đầu từ
+                  cấp độ nào.
+                </p>
+              </div>
+              <Link
+                href="/onboarding"
+                className="btn-primary inline-flex flex-shrink-0 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold"
+              >
+                Bắt đầu thiết lập
+                <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+              </Link>
+            </div>
+          </section>
+        ) : null}
 
         {/* Daily target */}
         {dailyPlan && currentDay ? (

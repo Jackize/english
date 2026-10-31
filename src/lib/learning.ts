@@ -45,6 +45,15 @@ export interface LevelOverview {
   completed: number;
 }
 
+export interface DailyGoalProgress {
+  targetLessons: number;
+  targetMinutes: number;
+  completedLessons: number;
+  completedMinutes: number;
+  percent: number;
+  done: boolean;
+}
+
 export interface Overview {
   levels: LevelOverview[];
   totalLessons: number;
@@ -53,12 +62,36 @@ export interface Overview {
   xp: number;
   streak: number;
   reviewCount: number;
+  dailyGoal: DailyGoalProgress;
+  onboarding: {
+    completed: boolean;
+    targetLevel: LevelCode | null;
+    placementLevel: LevelCode | null;
+  };
   counts: {
     grammar: { total: number; completed: number };
     vocabulary: { total: number; completed: number; topics: number };
   };
   nextLesson: (LessonCard & { levelCode: LevelCode; levelName: string; topicName: string | null }) | null;
   plant: ReturnType<typeof getPlantStage> & { remainingXp: number };
+}
+
+function startOfToday() {
+  const value = new Date();
+  value.setHours(0, 0, 0, 0);
+  return value;
+}
+
+function endOfToday() {
+  const value = startOfToday();
+  value.setDate(value.getDate() + 1);
+  return value;
+}
+
+const LEVEL_CODES = new Set<LevelCode>(["A1", "A2", "B1", "B2", "C1", "C2"]);
+
+function toLevelCode(value: string | null | undefined): LevelCode | null {
+  return value && LEVEL_CODES.has(value as LevelCode) ? (value as LevelCode) : null;
 }
 
 type LessonRecord = {
@@ -143,20 +176,32 @@ export const getOverview = cache(async (userId?: string, levelCode?: LevelCode):
           select: {
             lessonId: true,
             completed: true,
+            completedAt: true,
             theoryDone: true,
             bestScore: true,
             quizTotal: true,
+            lesson: { select: { estimatedMinutes: true } },
           },
         })
       : Promise.resolve([]),
     userId
       ? prisma.user.findUnique({
           where: { id: userId },
-          select: { xp: true, streak: true },
+          select: {
+            xp: true,
+            streak: true,
+            dailyGoalLessons: true,
+            dailyGoalMinutes: true,
+            onboardedAt: true,
+            targetLevel: true,
+            placementLevel: true,
+          },
         })
       : Promise.resolve(null),
     userId
-      ? prisma.reviewItem.count({ where: { userId, resolved: false } })
+      ? prisma.reviewItem.count({
+          where: { userId, resolved: false, dueAt: { lt: endOfToday() } },
+        })
       : Promise.resolve(0),
   ]);
 
@@ -282,6 +327,24 @@ export const getOverview = cache(async (userId?: string, levelCode?: LevelCode):
     ? Math.max(0, Math.ceil((plant.next.threshold / 100) * totalXp) - (user?.xp ?? 0))
     : 0;
 
+  const today = startOfToday();
+  const todayRows = progressRows.filter(
+    (row) => row.completed && row.completedAt && row.completedAt >= today,
+  );
+  const completedToday = todayRows.length;
+  const completedMinutesToday = todayRows.reduce(
+    (sum, row) => sum + row.lesson.estimatedMinutes,
+    0,
+  );
+  const targetLessons = Math.max(1, user?.dailyGoalLessons ?? 2);
+  const targetMinutes = Math.max(1, user?.dailyGoalMinutes ?? 20);
+  const goalPercent = Math.min(
+    100,
+    Math.round(
+      Math.max(completedToday / targetLessons, completedMinutesToday / targetMinutes) * 100,
+    ),
+  );
+
   const visibleLevels = levelCode
     ? levelOverviews.filter((level) => level.code === levelCode)
     : levelOverviews;
@@ -294,6 +357,19 @@ export const getOverview = cache(async (userId?: string, levelCode?: LevelCode):
     xp: user?.xp ?? 0,
     streak: user?.streak ?? 0,
     reviewCount,
+    dailyGoal: {
+      targetLessons,
+      targetMinutes,
+      completedLessons: completedToday,
+      completedMinutes: completedMinutesToday,
+      percent: goalPercent,
+      done: goalPercent >= 100,
+    },
+    onboarding: {
+      completed: Boolean(user?.onboardedAt),
+      targetLevel: toLevelCode(user?.targetLevel),
+      placementLevel: toLevelCode(user?.placementLevel),
+    },
     counts: {
       grammar: { total: grammarTotal, completed: grammarCompleted },
       vocabulary: { total: vocabularyTotal, completed: vocabularyCompleted, topics: topicCount },
@@ -301,6 +377,14 @@ export const getOverview = cache(async (userId?: string, levelCode?: LevelCode):
     nextLesson,
     plant: { ...plant, remainingXp },
   };
+});
+
+export const getHeaderStats = cache(async (userId?: string) => {
+  if (!userId) return null;
+  return prisma.user.findUnique({
+    where: { id: userId },
+    select: { streak: true, xp: true },
+  });
 });
 
 export const getContinueLesson = cache(async (userId?: string) => {
@@ -439,8 +523,8 @@ export type LearnerLesson = NonNullable<Awaited<ReturnType<typeof getLessonForLe
 
 export async function getReviewItems(userId: string) {
   const items = await prisma.reviewItem.findMany({
-    where: { userId, resolved: false },
-    orderBy: { lastWrongAt: "desc" },
+    where: { userId, resolved: false, dueAt: { lt: endOfToday() } },
+    orderBy: [{ dueAt: "asc" }, { lastWrongAt: "desc" }],
     include: {
       question: {
         include: {
@@ -456,6 +540,9 @@ export async function getReviewItems(userId: string) {
     id: item.id,
     wrongCount: item.wrongCount,
     lastWrongAt: item.lastWrongAt.toISOString(),
+    dueAt: item.dueAt.toISOString(),
+    intervalDays: item.intervalDays,
+    correctStreak: item.correctStreak,
     question: {
       id: item.question.id,
       prompt: item.question.prompt,

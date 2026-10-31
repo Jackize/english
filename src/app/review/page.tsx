@@ -21,13 +21,13 @@ export default async function ReviewPage() {
             Sai một lần, <span className="display-accent text-brand">nhớ một đời.</span>
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">
-            Mỗi câu trả lời sai trong bài kiểm tra được lưu lại. Trả lời đúng ở đây để đánh dấu đã
-            xử lý — danh sách sẽ ngắn dần theo tiến độ của bạn.
+            Mỗi câu trả lời sai được đưa vào lịch ôn giãn cách 1 → 3 → 7 → 14 → 30 ngày. Trả lời
+            đúng để chuyển sang mốc tiếp theo; trả lời sai sẽ quay lại ôn ngay trong hôm nay.
           </p>
           {items.length > 0 ? (
             <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-surface-muted px-3 py-1.5 text-xs text-muted">
               <span className="h-1.5 w-1.5 rounded-full bg-gold" />
-              {items.length} câu đang chờ ôn
+              {items.length} câu đến hạn ôn hôm nay
             </div>
           ) : null}
         </section>

@@ -10,6 +10,7 @@ export interface HeaderUser {
   name: string | null;
   email: string | null;
   role: "USER" | "ADMIN";
+  streak: number;
 }
 
 export interface ContinueLessonSummary {
@@ -123,6 +124,23 @@ export function HeaderBar({ active, user, continueLesson }: HeaderBarProps) {
 
           {user ? (
             <>
+              <span
+                className="hidden items-center gap-1 rounded-full border border-[#f0d9b5] bg-[#fdf3e2] px-2.5 py-1.5 text-xs font-semibold text-gold sm:inline-flex"
+                title={`Chuỗi học ${user.streak} ngày`}
+              >
+                <span className="material-symbols-outlined text-[16px]">local_fire_department</span>
+                {user.streak}
+              </span>
+
+              <Link
+                href="/settings"
+                aria-label="Cài đặt học tập"
+                title="Cài đặt học tập"
+                className="hidden h-9 w-9 items-center justify-center rounded-full border border-line bg-surface text-muted transition-colors hover:border-brand/30 hover:text-brand sm:flex"
+              >
+                <span className="material-symbols-outlined text-[18px]">settings</span>
+              </Link>
+
               {isAdmin ? (
                 <Link
                   href="/admin"
@@ -209,6 +227,14 @@ export function HeaderBar({ active, user, continueLesson }: HeaderBarProps) {
                 </div>
               </div>
             ))}
+
+            <Link
+              href="/settings"
+              onClick={() => setMobileOpen(false)}
+              className="block rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-brand-soft/60 hover:text-brand"
+            >
+              Cài đặt học tập
+            </Link>
 
             {isAdmin ? (
               <Link

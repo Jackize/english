@@ -8,6 +8,7 @@ import { ProgressBar } from "@/components/ui/Progress";
 import { useToast } from "@/components/ui/Toast";
 
 type Tab = "learn" | "quiz";
+type QuizMode = "practice" | "exam";
 
 interface QuestionFeedback {
   correct: boolean;
@@ -105,6 +106,7 @@ export function LessonExperience({
   const [marking, setMarking] = useState(false);
 
   const [quizStarted, setQuizStarted] = useState(false);
+  const [quizMode, setQuizMode] = useState<QuizMode>("practice");
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [feedback, setFeedback] = useState<Record<string, QuestionFeedback>>({});
@@ -179,9 +181,18 @@ export function LessonExperience({
   }, [canSave, markTheoryDone, tab, theoryDone]);
 
   async function choose(choiceId: string) {
-    if (!question || answers[question.id] || checking[question.id]) return;
+    if (!question) return;
 
     const questionId = question.id;
+
+    // Chế độ thi thật: chỉ ghi nhận lựa chọn, không chấm từng câu.
+    if (quizMode === "exam") {
+      setAnswers((previous) => ({ ...previous, [questionId]: choiceId }));
+      return;
+    }
+
+    if (answers[question.id] || checking[question.id]) return;
+
     setAnswers((previous) => ({ ...previous, [questionId]: choiceId }));
     setChecking((previous) => ({ ...previous, [questionId]: true }));
 
@@ -258,6 +269,16 @@ export function LessonExperience({
     setChecking({});
     setCurrent(0);
     setQuizStarted(false);
+  }
+
+  function changeMode(mode: QuizMode) {
+    if (mode === quizMode) return;
+    setQuizMode(mode);
+    setAnswers({});
+    setFeedback({});
+    setChecking({});
+    setCurrent(0);
+    setResult(null);
   }
 
   return (
@@ -692,6 +713,63 @@ export function LessonExperience({
                   {totalQuestions} câu hỏi trắc nghiệm. Bạn cần đạt từ 70% để hoàn thành bài.
                   Câu sai sẽ được lưu vào mục Ôn tập.
                 </p>
+
+                <div className="mx-auto mt-6 grid max-w-lg gap-3 text-left sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => changeMode("practice")}
+                    className={`rounded-xl border p-4 transition-colors ${
+                      quizMode === "practice"
+                        ? "border-brand bg-brand-soft"
+                        : "border-line bg-surface hover:border-brand/30"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2 text-sm font-semibold text-ink">
+                        <span className="material-symbols-outlined text-[18px] text-brand">
+                          school
+                        </span>
+                        Luyện tập
+                      </span>
+                      {quizMode === "practice" ? (
+                        <span className="material-symbols-outlined text-[18px] text-brand">
+                          check_circle
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-1.5 text-[11px] leading-relaxed text-muted">
+                      Chấm ngay từng câu, xem giải thích và sửa sai liền.
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => changeMode("exam")}
+                    className={`rounded-xl border p-4 transition-colors ${
+                      quizMode === "exam"
+                        ? "border-brand bg-brand-soft"
+                        : "border-line bg-surface hover:border-brand/30"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2 text-sm font-semibold text-ink">
+                        <span className="material-symbols-outlined text-[18px] text-brand">
+                          timer
+                        </span>
+                        Thi thật
+                      </span>
+                      {quizMode === "exam" ? (
+                        <span className="material-symbols-outlined text-[18px] text-brand">
+                          check_circle
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-1.5 text-[11px] leading-relaxed text-muted">
+                      Làm liền mạch, đổi đáp án thoải mái, chấm một lần khi nộp.
+                    </p>
+                  </button>
+                </div>
+
                 <div className="mx-auto mt-5 grid max-w-md grid-cols-3 gap-3 text-center">
                   <div className="rounded-xl bg-surface-muted px-3 py-3">
                     <div className="text-lg font-bold text-ink">{totalQuestions}</div>
@@ -711,7 +789,7 @@ export function LessonExperience({
                   onClick={() => setQuizStarted(true)}
                   className="btn-primary mt-6 inline-flex items-center gap-2 rounded-full px-7 py-3 text-sm font-semibold"
                 >
-                  Bắt đầu làm bài
+                  {quizMode === "exam" ? "Bắt đầu thi" : "Bắt đầu làm bài"}
                   <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
                 </button>
               </div>
@@ -722,9 +800,48 @@ export function LessonExperience({
                     <span>
                       Câu {current + 1}/{totalQuestions}
                     </span>
-                    <span>{answeredCount} đã chọn</span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                          quizMode === "exam"
+                            ? "bg-[#fdf3e2] text-gold"
+                            : "bg-brand-soft text-brand"
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[12px]">
+                          {quizMode === "exam" ? "timer" : "school"}
+                        </span>
+                        {quizMode === "exam" ? "Thi thật" : "Luyện tập"}
+                      </span>
+                      {answeredCount} đã chọn
+                    </span>
                   </div>
                   <ProgressBar value={(answeredCount / totalQuestions) * 100} />
+
+                  {quizMode === "exam" ? (
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {lesson.questions.map((item, index) => {
+                        const done = Boolean(answers[item.id]);
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => setCurrent(index)}
+                            aria-label={`Đi đến câu ${index + 1}`}
+                            className={`flex h-7 w-7 items-center justify-center rounded-lg text-[11px] font-bold transition-colors ${
+                              index === current
+                                ? "bg-brand text-white"
+                                : done
+                                  ? "bg-brand-soft text-brand"
+                                  : "bg-surface-muted text-muted hover:text-ink"
+                            }`}
+                          >
+                            {index + 1}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-brand">
@@ -737,9 +854,12 @@ export function LessonExperience({
                 <div className="mt-6 space-y-2.5">
                   {question.choices.map((choice, index) => {
                     const active = selected === choice.id;
-                    const showCorrect = questionFeedback?.correctChoiceId === choice.id;
-                    const showWrong = questionFeedback ? active && !questionFeedback.correct : false;
-                    const locked = Boolean(questionFeedback) || checkingAnswer;
+                    const practiceFeedback =
+                      quizMode === "practice" ? questionFeedback : undefined;
+                    const showCorrect = practiceFeedback?.correctChoiceId === choice.id;
+                    const showWrong = practiceFeedback ? active && !practiceFeedback.correct : false;
+                    const locked =
+                      quizMode === "practice" && (Boolean(questionFeedback) || checkingAnswer);
 
                     return (
                       <button
@@ -785,7 +905,7 @@ export function LessonExperience({
                   })}
                 </div>
 
-                {questionFeedback ? (
+                {quizMode === "practice" && questionFeedback ? (
                   <div
                     className={`mt-5 rounded-xl border p-4 ${
                       questionFeedback.correct
@@ -815,8 +935,13 @@ export function LessonExperience({
                       </p>
                     ) : null}
                   </div>
-                ) : checkingAnswer ? (
+                ) : quizMode === "practice" && checkingAnswer ? (
                   <p className="mt-4 text-xs text-muted">Đang kiểm tra đáp án...</p>
+                ) : quizMode === "exam" ? (
+                  <p className="mt-4 text-xs leading-relaxed text-muted">
+                    Đã ghi nhận lựa chọn. Bạn có thể đổi đáp án và quay lại bất cứ lúc nào trước khi
+                    nộp bài.
+                  </p>
                 ) : null}
 
                 <div className="mt-7 flex items-center justify-between gap-3">
@@ -833,7 +958,7 @@ export function LessonExperience({
                   {current < totalQuestions - 1 ? (
                     <button
                       type="button"
-                      disabled={!selected}
+                      disabled={quizMode === "practice" && !selected}
                       onClick={() => setCurrent((value) => value + 1)}
                       className="btn-primary inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
                     >
@@ -847,7 +972,11 @@ export function LessonExperience({
                       onClick={submit}
                       className="btn-primary inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      {submitting ? "Đang chấm..." : "Nộp bài"}
+                      {submitting
+                        ? "Đang chấm..."
+                        : quizMode === "exam"
+                          ? "Nộp bài thi"
+                          : "Nộp bài"}
                       <span className="material-symbols-outlined text-[18px]">check</span>
                     </button>
                   )}

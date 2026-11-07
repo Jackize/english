@@ -1,4 +1,5 @@
 import { A1_LEVEL } from "./a1-curriculum";
+import { A2_VOCAB } from "./a2-vocab";
 
 export type LevelCode = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
 
@@ -35,17 +36,22 @@ export interface SeedGrammarLesson {
   questions: SeedQuestion[];
 }
 
+export interface SeedVocabLesson {
+  title: string;
+  summary: string;
+  sections: SeedSection[];
+  words: SeedWord[];
+}
+
 export interface SeedVocabTopic {
   name: string;
   slug: string;
   icon: string;
   description: string;
-  lesson: {
-    title: string;
-    summary: string;
-    sections: SeedSection[];
-    words: SeedWord[];
-  };
+  /** Chủ đề cũ chỉ có một bài học. */
+  lesson?: SeedVocabLesson;
+  /** Chủ đề lớn được chia thành nhiều bài học. */
+  lessons?: SeedVocabLesson[];
 }
 
 export interface SeedLevel {
@@ -182,62 +188,7 @@ export const CURRICULUM: SeedLevel[] = [
       },
     ],
     vocab: [
-      {
-        name: "Du lịch & phương tiện",
-        slug: "du-lich-phuong-tien",
-        icon: "flight",
-        description: "Từ vựng cần thiết cho một chuyến đi trong và ngoài nước.",
-        lesson: {
-          title: "Một chuyến đi trọn vẹn",
-          summary: "8 từ vựng về sân bay, khách sạn và phương tiện di chuyển.",
-          sections: [
-            {
-              title: "Ở sân bay",
-              body:
-                "Các bước cơ bản:\n1. Check in at the **check-in desk**.\n2. Show your **passport** and **ticket**.\n3. Go through security and wait at the **gate**.\n\nHành lý: **luggage** (không đếm được) — How much luggage do you have?",
-              remember: "Luggage không có dạng số nhiều; dùng “a piece of luggage”.",
-            },
-          ],
-          words: [
-            { word: "airport", ipa: "/ˈeəpɔːt/", wordForm: "n", meaningVi: "sân bay", example: "We arrived at the airport early." },
-            { word: "ticket", ipa: "/ˈtɪkɪt/", wordForm: "n", meaningVi: "vé", example: "I bought a return ticket." },
-            { word: "luggage", ipa: "/ˈlʌɡɪdʒ/", wordForm: "n", meaningVi: "hành lý", example: "Your luggage is too heavy." },
-            { word: "passport", ipa: "/ˈpɑːspɔːt/", wordForm: "n", meaningVi: "hộ chiếu", example: "Don't forget your passport." },
-            { word: "hotel", ipa: "/həʊˈtel/", wordForm: "n", meaningVi: "khách sạn", example: "The hotel is near the beach." },
-            { word: "journey", ipa: "/ˈdʒɜːni/", wordForm: "n", meaningVi: "chuyến đi, hành trình", example: "The journey took five hours." },
-            { word: "train", ipa: "/treɪn/", wordForm: "n", meaningVi: "tàu hoả", example: "We travelled by train." },
-            { word: "book", ipa: "/bʊk/", wordForm: "v", meaningVi: "đặt (vé, phòng)", example: "I booked a room online." },
-          ],
-        },
-      },
-      {
-        name: "Sức khoẻ & cơ thể",
-        slug: "suc-khoe-co-the",
-        icon: "health_and_safety",
-        description: "Mô tả triệu chứng và trao đổi với bác sĩ.",
-        lesson: {
-          title: "Khi bạn cảm thấy không khoẻ",
-          summary: "8 từ vựng để nói về triệu chứng và chăm sóc sức khoẻ.",
-          sections: [
-            {
-              title: "Mô tả triệu chứng",
-              body:
-                "Dùng **have** + triệu chứng:\n- I **have a headache**.\n- She **has a sore throat**.\n\nDùng **feel** + tính từ:\n- I **feel tired**.\n- He **feels sick**.\n\nLời khuyên với should:\n- You **should see** a doctor.\n- You **shouldn't drink** cold water.",
-              remember: "A headache, a stomachache, a sore throat — dùng a/an.",
-            },
-          ],
-          words: [
-            { word: "headache", ipa: "/ˈhedeɪk/", wordForm: "n", meaningVi: "đau đầu", example: "I have a bad headache." },
-            { word: "medicine", ipa: "/ˈmedsn/", wordForm: "n", meaningVi: "thuốc", example: "Take this medicine after meals." },
-            { word: "doctor", ipa: "/ˈdɒktə/", wordForm: "n", meaningVi: "bác sĩ", example: "You should see a doctor." },
-            { word: "hospital", ipa: "/ˈhɒspɪtl/", wordForm: "n", meaningVi: "bệnh viện", example: "She works at a hospital." },
-            { word: "healthy", ipa: "/ˈhelθi/", wordForm: "adj", meaningVi: "khoẻ mạnh", example: "Eating vegetables keeps you healthy." },
-            { word: "exercise", ipa: "/ˈeksəsaɪz/", wordForm: "n/v", meaningVi: "tập thể dục", example: "I exercise every morning." },
-            { word: "sleep", ipa: "/sliːp/", wordForm: "v/n", meaningVi: "ngủ, giấc ngủ", example: "You need to sleep more." },
-            { word: "pain", ipa: "/peɪn/", wordForm: "n", meaningVi: "cơn đau", example: "I feel a sharp pain in my back." },
-          ],
-        },
-      },
+      ...A2_VOCAB,
     ],
   },
   {

@@ -5,7 +5,12 @@ import { createPrismaClient } from "../src/lib/prisma";
 import { buildVocabularyQuestions } from "../src/lib/vocabulary-quiz";
 import type { ReadingUnit } from "../src/lib/reading-types";
 import { A1_READING_UNITS } from "./a1-reading";
-import { CURRICULUM, type SeedQuestion, type SeedWord } from "./curriculum-data";
+import {
+  CURRICULUM,
+  type SeedQuestion,
+  type SeedVocabTopic,
+  type SeedWord,
+} from "./curriculum-data";
 
 // Seed chạy tuần tự; chỉ mở một kết nối để tránh làm cạn pooler của Supabase.
 const prisma = createPrismaClient({ max: 1, connectionTimeoutMillis: 15000 });
@@ -82,7 +87,8 @@ async function seedGrammarLesson(
 async function seedVocabTopic(
   levelId: string,
   topicOrder: number,
-  data: (typeof CURRICULUM)[number]["vocab"][number],
+  data: SeedVocabTopic,
+  lessonOrderStart: number,
 ) {
   const topic = await prisma.topic.upsert({
     where: { levelId_slug: { levelId, slug: data.slug } },
@@ -102,58 +108,80 @@ async function seedVocabTopic(
     },
   });
 
-  const lesson = await prisma.lesson.upsert({
-    where: { track_levelId_order: { track: "vocabulary", levelId, order: topicOrder + 1 } },
-    update: {
-      title: data.lesson.title,
-      summary: data.lesson.summary,
+  const lessons = data.lessons ?? (data.lesson ? [data.lesson] : []);
+  let wordCount = 0;
+  let questionCount = 0;
+  const seededLessonIds: string[] = [];
+
+  for (const [index, lessonData] of lessons.entries()) {
+    const order = lessonOrderStart + index;
+    const lesson = await prisma.lesson.upsert({
+      where: { track_levelId_order: { track: "vocabulary", levelId, order } },
+      update: {
+        title: lessonData.title,
+        summary: lessonData.summary,
+        topicId: topic.id,
+        xp: 10,
+        estimatedMinutes: 10,
+      },
+      create: {
+        track: "vocabulary",
+        levelId,
+        topicId: topic.id,
+        order,
+        title: lessonData.title,
+        summary: lessonData.summary,
+        xp: 10,
+        estimatedMinutes: 10,
+      },
+    });
+
+    seededLessonIds.push(lesson.id);
+
+    await prisma.lessonSection.deleteMany({ where: { lessonId: lesson.id } });
+    await prisma.vocabEntry.deleteMany({ where: { lessonId: lesson.id } });
+    await prisma.question.deleteMany({ where: { lessonId: lesson.id } });
+
+    await prisma.lessonSection.createMany({
+      data: lessonData.sections.map((section, i) => ({
+        lessonId: lesson.id,
+        title: section.title,
+        body: section.body,
+        remember: section.remember,
+        order: i,
+      })),
+    });
+
+    await prisma.vocabEntry.createMany({
+      data: lessonData.words.map((word, i) => ({
+        lessonId: lesson.id,
+        word: word.word,
+        ipa: word.ipa,
+        wordForm: word.wordForm,
+        meaningVi: word.meaningVi,
+        meaningEn: word.meaningEn,
+        example: word.example,
+        order: i,
+      })),
+    });
+
+    const questions = vocabularyQuestions(lessonData.words);
+    await createQuestions(lesson.id, questions);
+
+    wordCount += lessonData.words.length;
+    questionCount += questions.length;
+  }
+
+  // Nếu chủ đề từng có nhiều bài hơn hiện tại, dọn các bài thừa của chính chủ đề đó.
+  await prisma.lesson.deleteMany({
+    where: {
       topicId: topic.id,
-      xp: 10,
-      estimatedMinutes: 10,
-    },
-    create: {
       track: "vocabulary",
-      levelId,
-      topicId: topic.id,
-      order: topicOrder + 1,
-      title: data.lesson.title,
-      summary: data.lesson.summary,
-      xp: 10,
-      estimatedMinutes: 10,
+      id: { notIn: seededLessonIds.length > 0 ? seededLessonIds : ["__none__"] },
     },
   });
 
-  await prisma.lessonSection.deleteMany({ where: { lessonId: lesson.id } });
-  await prisma.vocabEntry.deleteMany({ where: { lessonId: lesson.id } });
-  await prisma.question.deleteMany({ where: { lessonId: lesson.id } });
-
-  await prisma.lessonSection.createMany({
-    data: data.lesson.sections.map((section, i) => ({
-      lessonId: lesson.id,
-      title: section.title,
-      body: section.body,
-      remember: section.remember,
-      order: i,
-    })),
-  });
-
-  await prisma.vocabEntry.createMany({
-    data: data.lesson.words.map((word, i) => ({
-      lessonId: lesson.id,
-      word: word.word,
-      ipa: word.ipa,
-      wordForm: word.wordForm,
-      meaningVi: word.meaningVi,
-      meaningEn: word.meaningEn,
-      example: word.example,
-      order: i,
-    })),
-  });
-
-  const questions = vocabularyQuestions(data.lesson.words);
-  await createQuestions(lesson.id, questions);
-
-  return { topic, lesson, words: data.lesson.words.length, questions: questions.length };
+  return { topic, words: wordCount, questions: questionCount, lessons: lessons.length };
 }
 
 async function seedReadingUnit(levelId: string, data: ReadingUnit) {
@@ -411,14 +439,28 @@ async function main() {
       }
     }
 
+    // Tính trước thứ tự bài học từ toàn bộ danh sách chủ đề, kể cả khi seed
+    // từng phần bằng SEED_VOCAB_FROM/TO, để không ghi đè bài của chủ đề khác.
+    let nextLessonOrder = 0;
+    const lessonOrderByTopic = levelData.vocab.map((topic) => {
+      const start = nextLessonOrder + 1;
+      nextLessonOrder += topic.lessons?.length ?? (topic.lesson ? 1 : 0);
+      return start;
+    });
+
     for (const [i, topicData] of levelData.vocab.entries()) {
       if (skipVocab) break;
 
       const topicNumber = i + 1;
       if (topicNumber < vocabFrom || topicNumber > vocabTo) continue;
 
-      const result = await seedVocabTopic(level.id, topicNumber, topicData);
-      vocabCount += 1;
+      const result = await seedVocabTopic(
+        level.id,
+        topicNumber,
+        topicData,
+        lessonOrderByTopic[i],
+      );
+      vocabCount += result.lessons;
       vocabQuestions += result.questions;
       wordCount += result.words;
     }
@@ -437,16 +479,24 @@ async function main() {
       // người dùng có thể đã tạo thêm trong admin.
       removedTopics += await cleanupTopics(level.id, ["gia-dinh-nha-cua"]);
     }
+
+    if (!skipCleanup && levelData.code === "A2") {
+      // Hai topic A2 cũ chỉ có 8 từ A1-level, đã được thay bằng 25 chủ đề mới.
+      removedTopics += await cleanupTopics(level.id, [
+        "du-lich-phuong-tien",
+        "suc-khoe-co-the",
+      ]);
+    }
   }
 
   console.log(`Seeded ${seededLevels} CEFR level(s)`);
   console.log(`Grammar: ${grammarCount} lessons / ${grammarQuestions} questions`);
-  console.log(`Vocabulary: ${vocabCount} topics & lessons / ${wordCount} words / ${vocabQuestions} questions`);
+  console.log(`Vocabulary: ${vocabCount} lessons / ${wordCount} words / ${vocabQuestions} questions`);
   console.log(
     `Reading: ${readingUnitCount} units / ${readingWordCount} words / ${readingQuestionCount} questions`,
   );
   if (removedTopics > 0) {
-    console.log(`Removed ${removedTopics} stale A1 topic(s)`);
+    console.log(`Removed ${removedTopics} stale topic(s)`);
   }
   console.log("Demo user: demo@eng-growth.app / demo1234");
   console.log(`Admin user: ${adminEmail} / ${adminPassword}`);

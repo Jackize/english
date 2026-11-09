@@ -16,8 +16,12 @@
   --color-gold: #a8691a;
   --color-danger: #b42318;
 
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-display: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans:
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    sans-serif;
+  --font-display:
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    sans-serif;
 }
 
 body {
@@ -43,6 +47,13 @@ summary:focus-visible,
 [tabindex]:focus-visible {
   outline: 2px solid var(--color-brand);
   outline-offset: 2px;
+}
+
+/* The footer sits on the dark brand ground, so its ring needs the mint tone. */
+footer a:focus-visible,
+footer button:focus-visible,
+footer summary:focus-visible {
+  outline-color: var(--color-mint);
 }
 
 /* Trên mobile, nâng các nhãn 9–11px lên tối thiểu 12px để dễ đọc. */
@@ -75,12 +86,17 @@ summary:focus-visible,
 }
 
 .material-symbols-outlined {
-  font-family: var(--font-material-symbols), "Material Symbols Outlined", sans-serif;
+  font-family:
+    var(--font-material-symbols), "Material Symbols Outlined", sans-serif;
   font-weight: normal;
   font-style: normal;
   font-feature-settings: "liga";
   -webkit-font-feature-settings: "liga";
-  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+  font-variation-settings:
+    "FILL" 0,
+    "wght" 400,
+    "GRAD" 0,
+    "opsz" 24;
   font-size: 1.25rem;
   line-height: 1;
   letter-spacing: normal;
@@ -171,7 +187,9 @@ summary:focus-visible,
 .btn-mint {
   background: var(--color-mint);
   color: var(--color-brand-dark);
-  transition: filter 0.2s ease, transform 0.15s ease;
+  transition:
+    filter 0.2s ease,
+    transform 0.15s ease;
 }
 
 .btn-mint:hover {

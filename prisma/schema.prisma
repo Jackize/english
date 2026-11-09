@@ -30,6 +30,7 @@ model User {
   progress          LessonProgress[]
   attempts          QuizAttempt[]
   reviews           ReviewItem[]
+  vocabReviews      VocabReviewItem[]
 }
 
 model Level {
@@ -107,6 +108,7 @@ model VocabEntry {
   example   String?
   order     Int     @default(0)
   lesson    Lesson  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  reviews   VocabReviewItem[]
 
   @@index([lessonId])
 }
@@ -183,6 +185,32 @@ model ReviewItem {
   @@unique([userId, questionId])
   @@index([userId, resolved])
   @@index([userId, resolved, dueAt])
+}
+
+// ---------------------------------------------------------------------------
+// Vocabulary review (Leitner 5 boxes)
+// Mỗi từ mới vào mức 1. Đúng thì lên mức tiếp theo, sai thì quay về mức 1.
+// Lịch ôn: mức 1 mỗi ngày, mức 2 mỗi 2 ngày, mức 3 mỗi 4 ngày,
+// mức 4 mỗi 7 ngày, mức 5 mỗi 14 ngày.
+// ---------------------------------------------------------------------------
+
+model VocabReviewItem {
+  id             String     @id @default(cuid())
+  userId         String
+  vocabId        String
+  level          Int        @default(1)
+  correctStreak  Int        @default(0)
+  wrongCount     Int        @default(0)
+  lastReviewedAt DateTime?
+  dueAt          DateTime   @default(now())
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vocab          VocabEntry @relation(fields: [vocabId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, vocabId])
+  @@index([userId, dueAt])
+  @@index([userId, level])
 }
 
 // ---------------------------------------------------------------------------

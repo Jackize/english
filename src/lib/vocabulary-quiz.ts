@@ -11,6 +11,37 @@ export interface GeneratedQuestion {
   choices: { label: string; correct?: boolean }[];
 }
 
+export type WrittenDirection = "vi-en" | "en-vi";
+
+export interface WrittenPrompt {
+  vocabId: string;
+  direction: WrittenDirection;
+  prompt: string;
+}
+
+/**
+ * Sinh danh sách câu tự luận cho phần thi thật:
+ * - Việt → Anh: hiện nghĩa tiếng Việt, người học gõ từ tiếng Anh.
+ * - Anh → Việt: hiện từ tiếng Anh, người học gõ nghĩa tiếng Việt.
+ * Mỗi từ xuất hiện ở cả hai chiều để kiểm tra cả khả năng nhận biết và tái tạo.
+ */
+export function buildWrittenPrompts(
+  words: { id: string; word: string; meaningVi: string }[],
+): WrittenPrompt[] {
+  return [
+    ...words.map((word) => ({
+      vocabId: word.id,
+      direction: "vi-en" as const,
+      prompt: word.meaningVi,
+    })),
+    ...words.map((word) => ({
+      vocabId: word.id,
+      direction: "en-vi" as const,
+      prompt: word.word,
+    })),
+  ];
+}
+
 export function buildVocabularyQuestions(words: QuizWord[]): GeneratedQuestion[] {
   return words.map((word, index) => {
     const distractors: string[] = [];

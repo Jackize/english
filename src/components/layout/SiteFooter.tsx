@@ -48,7 +48,7 @@ export function SiteFooter() {
           <div className="space-y-2">
             <div className="text-xs font-bold uppercase tracking-[0.16em] text-muted">Tài khoản</div>
             <Link href="/review" className="block text-ink hover:text-brand">
-              Ôn lại câu sai
+              Ôn tập từ vựng & câu sai
             </Link>
             {user?.role === "ADMIN" ? (
               <Link href="/admin" className="block text-ink hover:text-brand">

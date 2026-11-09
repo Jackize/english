@@ -14,8 +14,16 @@ export async function POST(
   const { id } = await params;
 
   try {
-    const body = (await request.json()) as { answers?: Record<string, string> };
-    const result = await submitQuiz(session.user.id, id, body.answers ?? {});
+    const body = (await request.json()) as {
+      answers?: Record<string, string>;
+      writtenAnswers?: Record<string, string>;
+    };
+    const result = await submitQuiz(
+      session.user.id,
+      id,
+      body.answers ?? {},
+      body.writtenAnswers,
+    );
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(

@@ -1,34 +1,12 @@
 import { prisma } from "./prisma";
-
-function startOfDay(date: Date) {
-  const value = new Date(date);
-  value.setHours(0, 0, 0, 0);
-  return value;
-}
-
-async function touchStreak(userId: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { lastStudyDate: true, streak: true },
-  });
-  if (!user) return;
-
-  const today = startOfDay(new Date());
-  const last = user.lastStudyDate ? startOfDay(user.lastStudyDate) : null;
-
-  if (last && last.getTime() === today.getTime()) return;
-
-  let streak = 1;
-  if (last) {
-    const diffDays = Math.round((today.getTime() - last.getTime()) / 86_400_000);
-    streak = diffDays === 1 ? user.streak + 1 : 1;
-  }
-
-  await prisma.user.update({
-    where: { id: userId },
-    data: { streak, lastStudyDate: new Date() },
-  });
-}
+import { touchStreak } from "./streak";
+import {
+  isVocabularyAnswerCorrect,
+  normalizeVocabularyAnswer,
+  registerVocabularyForLesson,
+  vocabularyAnswerExplanation,
+} from "./vocab-review";
+import { buildWrittenPrompts, type WrittenDirection } from "./vocabulary-quiz";
 
 export async function completeTheory(userId: string, lessonId: string) {
   const progress = await prisma.lessonProgress.upsert({
@@ -37,6 +15,7 @@ export async function completeTheory(userId: string, lessonId: string) {
     update: { theoryDone: true },
   });
 
+  await registerVocabularyForLesson(userId, lessonId);
   await touchStreak(userId);
   return progress;
 }
@@ -52,10 +31,21 @@ export interface QuizDetail {
   explanation: string | null;
 }
 
+export interface WrittenQuizDetail {
+  vocabId: string;
+  direction: WrittenDirection;
+  prompt: string;
+  answer: string;
+  expectedAnswer: string;
+  correct: boolean;
+  explanation: string | null;
+}
+
 export async function submitQuiz(
   userId: string,
   lessonId: string,
   answers: Record<string, string>,
+  writtenAnswers?: Record<string, string>,
 ) {
   const lesson = await prisma.lesson.findUnique({
     where: { id: lessonId },
@@ -64,11 +54,14 @@ export async function submitQuiz(
         orderBy: { order: "asc" },
         include: { choices: { orderBy: { order: "asc" } } },
       },
+      vocab: { orderBy: { order: "asc" } },
     },
   });
 
   if (!lesson) throw new Error("Lesson not found");
-  if (lesson.questions.length === 0) throw new Error("Lesson has no questions");
+  if (lesson.questions.length === 0 && lesson.vocab.length === 0) {
+    throw new Error("Lesson has no questions");
+  }
 
   const details: QuizDetail[] = lesson.questions.map((question) => {
     const correctChoice = question.choices.find((choice) => choice.isCorrect);
@@ -87,8 +80,50 @@ export async function submitQuiz(
     };
   });
 
-  const score = details.filter((detail) => detail.correct).length;
-  const total = details.length;
+  const vocabById = new Map(lesson.vocab.map((entry) => [entry.id, entry]));
+  const wordsByMeaning = new Map<string, string[]>();
+  for (const entry of lesson.vocab) {
+    const key = normalizeVocabularyAnswer(entry.meaningVi);
+    wordsByMeaning.set(key, [...(wordsByMeaning.get(key) ?? []), entry.word]);
+  }
+  const includeWritten = lesson.track === "vocabulary" && writtenAnswers !== undefined;
+
+  const writtenDetails: WrittenQuizDetail[] = includeWritten
+    ? buildWrittenPrompts(lesson.vocab).flatMap((prompt) => {
+        const entry = vocabById.get(prompt.vocabId);
+        if (!entry) return [];
+
+        const answer = writtenAnswers?.[`${prompt.vocabId}:${prompt.direction}`] ?? "";
+        const correct = isVocabularyAnswerCorrect({
+          direction: prompt.direction,
+          answer,
+          word: entry.word,
+          meaningVi: entry.meaningVi,
+          alternatives:
+            prompt.direction === "vi-en"
+              ? wordsByMeaning.get(normalizeVocabularyAnswer(entry.meaningVi)) ?? []
+              : [],
+        });
+
+        return [
+          {
+            vocabId: entry.id,
+            direction: prompt.direction,
+            prompt: prompt.prompt,
+            answer,
+            expectedAnswer: prompt.direction === "vi-en" ? entry.word : entry.meaningVi,
+            correct,
+            explanation: vocabularyAnswerExplanation(entry),
+          },
+        ];
+      })
+    : [];
+
+  const score =
+    details.filter((detail) => detail.correct).length +
+    writtenDetails.filter((detail) => detail.correct).length;
+  const total = details.length + writtenDetails.length;
+  if (total === 0) throw new Error("Lesson has no questions");
   const percent = Math.round((score / total) * 100);
   const passed = percent >= 70;
 
@@ -166,6 +201,34 @@ export async function submitQuiz(
     }
   });
 
+  await registerVocabularyForLesson(userId, lessonId);
+
+  // Từ viết sai trong bài thi thật quay về mức 1 và đến hạn ôn ngay.
+  const wrongWritten = writtenDetails.filter((detail) => !detail.correct);
+  if (wrongWritten.length > 0) {
+    const now = new Date();
+    // Tuần tự từng upsert vì Prisma chỉ có 1 connection.
+    for (const detail of wrongWritten) {
+      await prisma.vocabReviewItem.upsert({
+        where: { userId_vocabId: { userId, vocabId: detail.vocabId } },
+        create: {
+          userId,
+          vocabId: detail.vocabId,
+          level: 1,
+          wrongCount: 1,
+          dueAt: now,
+        },
+        update: {
+          level: 1,
+          correctStreak: 0,
+          wrongCount: { increment: 1 },
+          lastReviewedAt: now,
+          dueAt: now,
+        },
+      });
+    }
+  }
+
   await touchStreak(userId);
 
   return {
@@ -174,6 +237,7 @@ export async function submitQuiz(
     percent,
     passed,
     details,
+    writtenDetails,
     xpAwarded: firstCompletion ? lesson.xp : 0,
   };
 }

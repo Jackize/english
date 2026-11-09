@@ -4,17 +4,20 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LearnerLesson } from "@/lib/learning";
+import { buildWrittenPrompts, type WrittenDirection } from "@/lib/vocabulary-quiz";
 import { ProgressBar } from "@/components/ui/Progress";
 import { useToast } from "@/components/ui/Toast";
 
 type Tab = "learn" | "quiz";
-type QuizMode = "practice" | "exam";
+type ExamStage = "choice" | "written";
 
-interface QuestionFeedback {
+interface WrittenDetail {
+  vocabId: string;
+  direction: WrittenDirection;
+  prompt: string;
+  answer: string;
+  expectedAnswer: string;
   correct: boolean;
-  selectedChoiceId: string;
-  correctChoiceId: string;
-  correctLabel: string;
   explanation: string | null;
 }
 
@@ -34,6 +37,7 @@ interface QuizResult {
     correct: boolean;
     explanation: string | null;
   }[];
+  writtenDetails?: WrittenDetail[];
 }
 
 function Inline({ text }: { text: string }) {
@@ -106,11 +110,12 @@ export function LessonExperience({
   const [marking, setMarking] = useState(false);
 
   const [quizStarted, setQuizStarted] = useState(false);
-  const [quizMode, setQuizMode] = useState<QuizMode>("practice");
+  const [examStage, setExamStage] = useState<ExamStage>("choice");
+  const [writtenAnswers, setWrittenAnswers] = useState<Record<string, string>>({});
+  // Tự luận đi tuần tự: hoàn thành Việt → Anh trước mới sang Anh → Việt.
+  const [writtenStep, setWrittenStep] = useState<WrittenDirection>("vi-en");
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [feedback, setFeedback] = useState<Record<string, QuestionFeedback>>({});
-  const [checking, setChecking] = useState<Record<string, boolean>>({});
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<QuizResult | null>(null);
 
@@ -119,10 +124,27 @@ export function LessonExperience({
 
   const totalQuestions = lesson.questions.length;
   const answeredCount = Object.keys(answers).length;
+  const isVocabulary = lesson.track === "vocabulary" && lesson.vocab.length > 0;
+  const writtenPrompts = useMemo(
+    () => (isVocabulary ? buildWrittenPrompts(lesson.vocab) : []),
+    [isVocabulary, lesson.vocab],
+  );
+  const writtenCount = writtenPrompts.length;
+  const writtenAnsweredCount = writtenPrompts.filter((prompt) =>
+    writtenAnswers[`${prompt.vocabId}:${prompt.direction}`]?.trim(),
+  ).length;
+  const writtenStepPrompts = writtenPrompts.filter(
+    (prompt) => prompt.direction === writtenStep,
+  );
+  const writtenStepAnswered = writtenStepPrompts.filter((prompt) =>
+    writtenAnswers[`${prompt.vocabId}:${prompt.direction}`]?.trim(),
+  ).length;
+  const writtenStepComplete =
+    writtenStepPrompts.length > 0 && writtenStepAnswered === writtenStepPrompts.length;
+  const examHasWriting = isVocabulary && writtenCount > 0;
+  const examTotal = totalQuestions + (examHasWriting ? writtenCount : 0);
   const question = lesson.questions[current];
   const selected = question ? answers[question.id] : undefined;
-  const questionFeedback = question ? feedback[question.id] : undefined;
-  const checkingAnswer = question ? Boolean(checking[question.id]) : false;
 
   const scorePercent = useMemo(
     () => (lesson.progress.quizTotal ? (lesson.progress.bestScore / lesson.progress.quizTotal) * 100 : 0),
@@ -180,51 +202,10 @@ export function LessonExperience({
     return () => window.clearTimeout(timer);
   }, [canSave, markTheoryDone, tab, theoryDone]);
 
-  async function choose(choiceId: string) {
+  function choose(choiceId: string) {
     if (!question) return;
-
-    const questionId = question.id;
-
     // Chế độ thi thật: chỉ ghi nhận lựa chọn, không chấm từng câu.
-    if (quizMode === "exam") {
-      setAnswers((previous) => ({ ...previous, [questionId]: choiceId }));
-      return;
-    }
-
-    if (answers[question.id] || checking[question.id]) return;
-
-    setAnswers((previous) => ({ ...previous, [questionId]: choiceId }));
-    setChecking((previous) => ({ ...previous, [questionId]: true }));
-
-    try {
-      const response = await fetch(`/api/lessons/${lesson.id}/answer`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ questionId, choiceId }),
-      });
-      if (!response.ok) throw new Error("Cannot check answer");
-      const data = (await response.json()) as QuestionFeedback;
-      setFeedback((previous) => ({ ...previous, [questionId]: data }));
-    } catch {
-      // Cho phép chọn lại nếu không kiểm tra được đáp án.
-      setAnswers((previous) => {
-        const next = { ...previous };
-        delete next[questionId];
-        return next;
-      });
-      showToast({
-        variant: "error",
-        title: "Không kiểm tra được đáp án",
-        description: "Kiểm tra kết nối mạng rồi chọn lại đáp án.",
-        action: { label: "Thử lại", onClick: () => void choose(choiceId) },
-      });
-    } finally {
-      setChecking((previous) => {
-        const next = { ...previous };
-        delete next[questionId];
-        return next;
-      });
-    }
+    setAnswers((previous) => ({ ...previous, [question.id]: choiceId }));
   }
 
   function goToQuiz() {
@@ -242,7 +223,10 @@ export function LessonExperience({
       const response = await fetch(`/api/lessons/${lesson.id}/quiz`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers }),
+        body: JSON.stringify({
+          answers,
+          writtenAnswers: examHasWriting ? writtenAnswers : undefined,
+        }),
       });
       if (!response.ok) throw new Error("Không thể nộp bài");
       const data = (await response.json()) as QuizResult;
@@ -265,20 +249,11 @@ export function LessonExperience({
   function restart() {
     setResult(null);
     setAnswers({});
-    setFeedback({});
-    setChecking({});
     setCurrent(0);
     setQuizStarted(false);
-  }
-
-  function changeMode(mode: QuizMode) {
-    if (mode === quizMode) return;
-    setQuizMode(mode);
-    setAnswers({});
-    setFeedback({});
-    setChecking({});
-    setCurrent(0);
-    setResult(null);
+    setExamStage("choice");
+    setWrittenAnswers({});
+    setWrittenStep("vi-en");
   }
 
   return (
@@ -580,7 +555,11 @@ export function LessonExperience({
                 <ul className="mt-3 space-y-2 text-xs leading-relaxed text-muted">
                   <li>• Đọc ví dụ và tự đặt một câu mới.</li>
                   <li>• Làm bài kiểm tra ngay sau khi học.</li>
-                  <li>• Câu sai sẽ xuất hiện trong mục Ôn tập.</li>
+                  <li>
+                    {lesson.track === "vocabulary"
+                      ? "Từ vựng tự vào lịch ôn tập; từ sai sẽ được ôn lại sớm hơn."
+                      : "Câu sai sẽ xuất hiện trong mục Ôn tập."}
+                  </li>
                 </ul>
               </div>
 
@@ -671,7 +650,7 @@ export function LessonExperience({
                         </span>
                         <div className="flex-1">
                           <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted">
-                            Câu {index + 1}
+                            Trắc nghiệm · Câu {index + 1}
                           </div>
                           <div className="mt-0.5 text-sm font-semibold text-ink">
                             {detail.prompt}
@@ -702,77 +681,106 @@ export function LessonExperience({
                     </div>
                   ))}
                 </div>
+
+                {result.writtenDetails && result.writtenDetails.length > 0 ? (
+                  <div className="mt-8">
+                    <div className="mb-3 flex items-center gap-2">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-soft text-brand">
+                        <span className="material-symbols-outlined text-[18px]">edit_note</span>
+                      </span>
+                      <h3 className="display text-xl text-ink">Phần tự luận</h3>
+                    </div>
+                    <div className="space-y-3">
+                      {result.writtenDetails.map((detail, index) => (
+                        <div key={`${detail.vocabId}-${detail.direction}`} className="card p-5">
+                          <div className="flex items-start gap-3">
+                            <span
+                              className={`mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[12px] font-bold ${
+                                detail.correct
+                                  ? "bg-brand-soft text-brand"
+                                  : "bg-[#fde8e6] text-danger"
+                              }`}
+                            >
+                              {detail.correct ? "✓" : "✕"}
+                            </span>
+                            <div className="flex-1">
+                              <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted">
+                                {detail.direction === "vi-en" ? "Việt → Anh" : "Anh → Việt"} · Câu{" "}
+                                {index + 1}
+                              </div>
+                              <div className="mt-0.5 text-sm font-semibold text-ink">
+                                {detail.prompt}
+                              </div>
+                              <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                                <span
+                                  className={`rounded-md px-2 py-1 ${
+                                    detail.correct
+                                      ? "bg-brand-soft text-brand"
+                                      : "bg-[#fde8e6] text-danger"
+                                  }`}
+                                >
+                                  Bạn viết: {detail.answer.trim() || "Chưa trả lời"}
+                                </span>
+                                {!detail.correct ? (
+                                  <span className="rounded-md bg-brand-soft px-2 py-1 text-brand">
+                                    Đáp án: {detail.expectedAnswer}
+                                  </span>
+                                ) : null}
+                              </div>
+                              {detail.explanation ? (
+                                <p className="mt-3 text-xs leading-relaxed text-muted">
+                                  {detail.explanation}
+                                </p>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ) : !quizStarted ? (
               <div className="card p-7 text-center md:p-10">
                 <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-soft text-brand">
                   <span className="material-symbols-outlined text-[28px]">quiz</span>
                 </span>
-                <h2 className="display mt-4 text-3xl text-ink">Kiểm tra kiến thức</h2>
+                <h2 className="display mt-4 text-3xl text-ink">Bài kiểm tra</h2>
                 <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
-                  {totalQuestions} câu hỏi trắc nghiệm. Bạn cần đạt từ 70% để hoàn thành bài.
-                  Câu sai sẽ được lưu vào mục Ôn tập.
+                  {examHasWriting
+                    ? `Bài thi gồm 2 phần: ${totalQuestions} câu trắc nghiệm và ${writtenCount} câu tự luận (Việt → Anh và Anh → Việt). Bạn cần đạt từ 70% để hoàn thành bài.`
+                    : `${totalQuestions} câu hỏi trắc nghiệm. Bạn cần đạt từ 70% để hoàn thành bài. Câu sai sẽ được lưu vào mục Ôn tập.`}
                 </p>
 
-                <div className="mx-auto mt-6 grid max-w-lg gap-3 text-left sm:grid-cols-2">
-                  <button
-                    type="button"
-                    onClick={() => changeMode("practice")}
-                    className={`rounded-xl border p-4 transition-colors ${
-                      quizMode === "practice"
-                        ? "border-brand bg-brand-soft"
-                        : "border-line bg-surface hover:border-brand/30"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-2 text-sm font-semibold text-ink">
-                        <span className="material-symbols-outlined text-[18px] text-brand">
-                          school
-                        </span>
-                        Luyện tập
-                      </span>
-                      {quizMode === "practice" ? (
-                        <span className="material-symbols-outlined text-[18px] text-brand">
-                          check_circle
-                        </span>
-                      ) : null}
+                {examHasWriting ? (
+                  <div className="mx-auto mt-5 max-w-lg rounded-xl border border-brand/15 bg-brand-soft/40 p-4 text-left">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand">
+                      Bài thi gồm 2 phần
                     </div>
-                    <p className="mt-1.5 text-[11px] leading-relaxed text-muted">
-                      Chấm ngay từng câu, xem giải thích và sửa sai liền.
-                    </p>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => changeMode("exam")}
-                    className={`rounded-xl border p-4 transition-colors ${
-                      quizMode === "exam"
-                        ? "border-brand bg-brand-soft"
-                        : "border-line bg-surface hover:border-brand/30"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-2 text-sm font-semibold text-ink">
-                        <span className="material-symbols-outlined text-[18px] text-brand">
-                          timer
+                    <div className="mt-3 space-y-2 text-xs">
+                      <div className="flex items-center justify-between gap-3 rounded-lg bg-surface/80 px-3 py-2">
+                        <span className="font-semibold text-ink">Phần 1 · Trắc nghiệm</span>
+                        <span className="text-muted">{totalQuestions} câu</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 rounded-lg bg-surface/80 px-3 py-2">
+                        <span className="font-semibold text-ink">Phần 2 · Tự luận</span>
+                        <span className="text-muted">
+                          {writtenCount} câu · Việt→Anh {lesson.vocab.length} · Anh→Việt{" "}
+                          {lesson.vocab.length}
                         </span>
-                        Thi thật
-                      </span>
-                      {quizMode === "exam" ? (
-                        <span className="material-symbols-outlined text-[18px] text-brand">
-                          check_circle
-                        </span>
-                      ) : null}
+                      </div>
                     </div>
-                    <p className="mt-1.5 text-[11px] leading-relaxed text-muted">
-                      Làm liền mạch, đổi đáp án thoải mái, chấm một lần khi nộp.
+                    <p className="mt-3 text-[11px] leading-relaxed text-muted">
+                      Phần tự luận đi lần lượt: hoàn thành Việt → Anh mới sang Anh → Việt.
                     </p>
-                  </button>
-                </div>
+                  </div>
+                ) : null}
 
                 <div className="mx-auto mt-5 grid max-w-md grid-cols-3 gap-3 text-center">
                   <div className="rounded-xl bg-surface-muted px-3 py-3">
-                    <div className="text-lg font-bold text-ink">{totalQuestions}</div>
+                    <div className="text-lg font-bold text-ink">
+                      {examHasWriting ? examTotal : totalQuestions}
+                    </div>
                     <div className="text-[10px] uppercase tracking-wide text-muted">Câu hỏi</div>
                   </div>
                   <div className="rounded-xl bg-surface-muted px-3 py-3">
@@ -789,59 +797,166 @@ export function LessonExperience({
                   onClick={() => setQuizStarted(true)}
                   className="btn-primary mt-6 inline-flex items-center gap-2 rounded-full px-7 py-3 text-sm font-semibold"
                 >
-                  {quizMode === "exam" ? "Bắt đầu thi" : "Bắt đầu làm bài"}
+                  Bắt đầu phần thi
                   <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
                 </button>
+              </div>
+            ) : examHasWriting && examStage === "written" ? (
+              <div className="card p-6 md:p-8">
+                <div className="mb-5">
+                  <div className="mb-2 flex items-center justify-between text-[11px] font-semibold text-muted">
+                    <span>
+                      Phần 2 · Tự luận · Bước {writtenStep === "vi-en" ? 1 : 2}/2
+                    </span>
+                    <span>
+                      {writtenStepAnswered}/{writtenStepPrompts.length} câu đã viết
+                    </span>
+                  </div>
+                  <ProgressBar
+                    value={
+                      writtenStepPrompts.length
+                        ? (writtenStepAnswered / writtenStepPrompts.length) * 100
+                        : 0
+                    }
+                  />
+                  <div className="mt-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
+                    <span className={writtenStep === "vi-en" ? "text-brand" : ""}>
+                      Việt → Anh
+                    </span>
+                    <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                    <span className={writtenStep === "en-vi" ? "text-brand" : ""}>
+                      Anh → Việt
+                    </span>
+                  </div>
+                </div>
+
+                <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-brand">
+                  Gõ lại từ vựng đã học
+                </div>
+                <h2 className="display mt-2 text-2xl leading-snug text-ink md:text-[28px]">
+                  {writtenStep === "vi-en"
+                    ? "Nhìn nghĩa tiếng Việt, gõ từ tiếng Anh"
+                    : "Nhìn từ tiếng Anh, gõ nghĩa tiếng Việt"}
+                </h2>
+                <p className="mt-2 text-xs leading-relaxed text-muted">
+                  Không phân biệt chữ hoa/thường và dấu câu. Với tiếng Việt, bạn có thể gõ không
+                  dấu.{" "}
+                  {writtenStep === "vi-en"
+                    ? `Hoàn thành đủ ${writtenStepPrompts.length} câu ở bước này mới sang bước tiếp theo.`
+                    : `Hoàn thành đủ ${writtenStepPrompts.length} câu ở bước này để nộp bài.`}
+                </p>
+
+                <div className="mt-5 space-y-3">
+                  {writtenStepPrompts.map((prompt, promptIndex) => {
+                    const key = `${prompt.vocabId}:${prompt.direction}`;
+                    return (
+                      <label
+                        key={key}
+                        className="block rounded-xl border border-line bg-surface-muted/20 p-3"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
+                            Câu {promptIndex + 1}
+                          </span>
+                          <span className="text-[10px] font-semibold text-muted">
+                            {prompt.direction === "vi-en" ? "Việt → Anh" : "Anh → Việt"}
+                          </span>
+                        </div>
+                        <div className="mt-1 text-sm font-semibold text-ink">{prompt.prompt}</div>
+                        <input
+                          value={writtenAnswers[key] ?? ""}
+                          onChange={(event) =>
+                            setWrittenAnswers((previous) => ({
+                              ...previous,
+                              [key]: event.target.value,
+                            }))
+                          }
+                          autoComplete="off"
+                          autoCapitalize="none"
+                          spellCheck={false}
+                          placeholder={
+                            prompt.direction === "vi-en"
+                              ? "Gõ từ tiếng Anh..."
+                              : "Gõ nghĩa tiếng Việt..."
+                          }
+                          className="mt-2 w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-ink outline-none transition-colors placeholder:text-muted/60 focus:border-brand"
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-7 flex justify-end">
+                  {writtenStep === "vi-en" ? (
+                    <button
+                      type="button"
+                      disabled={!writtenStepComplete}
+                      onClick={() => setWrittenStep("en-vi")}
+                      className="btn-primary inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Sang bước Anh → Việt
+                      <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={writtenAnsweredCount < writtenCount || submitting}
+                      onClick={submit}
+                      className="btn-primary inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {submitting ? "Đang chấm..." : "Nộp bài thi"}
+                      <span className="material-symbols-outlined text-[18px]">check</span>
+                    </button>
+                  )}
+                </div>
+
+                {!writtenStepComplete ? (
+                  <p className="mt-3 text-right text-[11px] text-muted">
+                    Còn {writtenStepPrompts.length - writtenStepAnswered} câu chưa viết ở bước này.
+                  </p>
+                ) : writtenStep === "en-vi" && writtenAnsweredCount < writtenCount ? (
+                  <p className="mt-3 text-right text-[11px] text-muted">
+                    Còn {writtenCount - writtenAnsweredCount} câu chưa viết.
+                  </p>
+                ) : null}
               </div>
             ) : (
               <div className="card p-6 md:p-8">
                 <div className="mb-5">
                   <div className="mb-2 flex items-center justify-between text-[11px] font-semibold text-muted">
                     <span>
-                      Câu {current + 1}/{totalQuestions}
+                      {examHasWriting
+                        ? `Phần 1 · Câu ${current + 1}/${totalQuestions}`
+                        : `Câu ${current + 1}/${totalQuestions}`}
                     </span>
                     <span className="inline-flex items-center gap-1.5">
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-                          quizMode === "exam"
-                            ? "bg-[#fdf3e2] text-gold"
-                            : "bg-brand-soft text-brand"
-                        }`}
-                      >
-                        <span className="material-symbols-outlined text-[12px]">
-                          {quizMode === "exam" ? "timer" : "school"}
-                        </span>
-                        {quizMode === "exam" ? "Thi thật" : "Luyện tập"}
-                      </span>
                       {answeredCount} đã chọn
                     </span>
                   </div>
                   <ProgressBar value={(answeredCount / totalQuestions) * 100} />
 
-                  {quizMode === "exam" ? (
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      {lesson.questions.map((item, index) => {
-                        const done = Boolean(answers[item.id]);
-                        return (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onClick={() => setCurrent(index)}
-                            aria-label={`Đi đến câu ${index + 1}`}
-                            className={`flex h-7 w-7 items-center justify-center rounded-lg text-[11px] font-bold transition-colors ${
-                              index === current
-                                ? "bg-brand text-white"
-                                : done
-                                  ? "bg-brand-soft text-brand"
-                                  : "bg-surface-muted text-muted hover:text-ink"
-                            }`}
-                          >
-                            {index + 1}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : null}
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {lesson.questions.map((item, index) => {
+                      const done = Boolean(answers[item.id]);
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setCurrent(index)}
+                          aria-label={`Đi đến câu ${index + 1}`}
+                          className={`flex h-7 w-7 items-center justify-center rounded-lg text-[11px] font-bold transition-colors ${
+                            index === current
+                              ? "bg-brand text-white"
+                              : done
+                                ? "bg-brand-soft text-brand"
+                                : "bg-surface-muted text-muted hover:text-ink"
+                          }`}
+                        >
+                          {index + 1}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-brand">
@@ -854,95 +969,35 @@ export function LessonExperience({
                 <div className="mt-6 space-y-2.5">
                   {question.choices.map((choice, index) => {
                     const active = selected === choice.id;
-                    const practiceFeedback =
-                      quizMode === "practice" ? questionFeedback : undefined;
-                    const showCorrect = practiceFeedback?.correctChoiceId === choice.id;
-                    const showWrong = practiceFeedback ? active && !practiceFeedback.correct : false;
-                    const locked =
-                      quizMode === "practice" && (Boolean(questionFeedback) || checkingAnswer);
 
                     return (
                       <button
                         key={choice.id}
                         type="button"
-                        disabled={locked}
                         onClick={() => choose(choice.id)}
-                        className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all disabled:cursor-default ${
-                          showCorrect
-                            ? "border-brand bg-brand-soft"
-                            : showWrong
-                              ? "border-danger/40 bg-[#fde8e6]"
-                              : active
-                                ? "border-brand bg-brand-soft/60"
-                                : "border-line bg-surface hover:border-brand/30 hover:bg-surface-muted/40"
+                        className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all ${
+                          active
+                            ? "border-brand bg-brand-soft/60"
+                            : "border-line bg-surface hover:border-brand/30 hover:bg-surface-muted/40"
                         }`}
                       >
                         <span
                           className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
-                            showCorrect
-                              ? "bg-brand text-white"
-                              : showWrong
-                                ? "bg-danger text-white"
-                                : active
-                                  ? "bg-brand text-white"
-                                  : "bg-surface-muted text-muted"
+                            active ? "bg-brand text-white" : "bg-surface-muted text-muted"
                           }`}
                         >
                           {String.fromCharCode(65 + index)}
                         </span>
                         <span className="text-sm text-ink">{choice.label}</span>
-                        {showCorrect ? (
-                          <span className="material-symbols-outlined ml-auto text-[18px] text-brand">
-                            check_circle
-                          </span>
-                        ) : showWrong ? (
-                          <span className="material-symbols-outlined ml-auto text-[18px] text-danger">
-                            cancel
-                          </span>
-                        ) : null}
                       </button>
                     );
                   })}
                 </div>
 
-                {quizMode === "practice" && questionFeedback ? (
-                  <div
-                    className={`mt-5 rounded-xl border p-4 ${
-                      questionFeedback.correct
-                        ? "border-brand/20 bg-brand-soft/50"
-                        : "border-danger/20 bg-[#fdf2f1]"
-                    }`}
-                  >
-                    <div
-                      className={`flex items-center gap-2 text-sm font-semibold ${
-                        questionFeedback.correct ? "text-brand" : "text-danger"
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-[18px]">
-                        {questionFeedback.correct ? "check_circle" : "cancel"}
-                      </span>
-                      {questionFeedback.correct ? "Chính xác!" : "Chưa đúng"}
-                    </div>
-                    {!questionFeedback.correct ? (
-                      <p className="mt-1 text-xs text-ink">
-                        Đáp án đúng:{" "}
-                        <span className="font-semibold">{questionFeedback.correctLabel}</span>
-                      </p>
-                    ) : null}
-                    {questionFeedback.explanation ? (
-                      <p className="mt-2 text-xs leading-relaxed text-muted">
-                        {questionFeedback.explanation}
-                      </p>
-                    ) : null}
-                  </div>
-                ) : quizMode === "practice" && checkingAnswer ? (
-                  <p className="mt-4 text-xs text-muted">Đang kiểm tra đáp án...</p>
-                ) : quizMode === "exam" ? (
-                  <p className="mt-4 text-xs leading-relaxed text-muted">
-                    Đã ghi nhận lựa chọn. Bạn có thể đổi đáp án và quay lại bất cứ lúc nào trước khi
-                    nộp bài.
-                  </p>
-                ) : null}
+                <p className="mt-4 text-xs leading-relaxed text-muted">
+                  Đã ghi nhận lựa chọn. Bạn có thể đổi đáp án và quay lại bất cứ lúc nào trước khi
+                  nộp bài.
+                </p>
 
                 <div className="mt-7 flex items-center justify-between gap-3">
                   <button
@@ -958,11 +1013,20 @@ export function LessonExperience({
                   {current < totalQuestions - 1 ? (
                     <button
                       type="button"
-                      disabled={quizMode === "practice" && !selected}
                       onClick={() => setCurrent((value) => value + 1)}
                       className="btn-primary inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       Câu tiếp theo
+                      <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                    </button>
+                  ) : examHasWriting ? (
+                    <button
+                      type="button"
+                      disabled={answeredCount < totalQuestions}
+                      onClick={() => setExamStage("written")}
+                      className="btn-primary inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Sang phần tự luận
                       <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
                     </button>
                   ) : (
@@ -972,11 +1036,7 @@ export function LessonExperience({
                       onClick={submit}
                       className="btn-primary inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      {submitting
-                        ? "Đang chấm..."
-                        : quizMode === "exam"
-                          ? "Nộp bài thi"
-                          : "Nộp bài"}
+                      {submitting ? "Đang chấm..." : "Nộp bài thi"}
                       <span className="material-symbols-outlined text-[18px]">check</span>
                     </button>
                   )}

@@ -60,7 +60,7 @@ export default async function HomePage() {
                     ? `Tiếp tục học: ${next.title}`
                     : dailyPlan && currentDay
                       ? "Tiếp tục kế hoạch hôm nay"
-                      : "Ôn tập câu sai"}
+                      : "Ôn tập kiến thức"}
                 </span>
                 <span className="material-symbols-outlined shrink-0 text-[18px]">arrow_forward</span>
               </Link>

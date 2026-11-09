@@ -224,7 +224,7 @@ export default async function RoadmapPage({
 
           <div className="mt-10 text-center">
             <Link href="/review" className="text-sm font-semibold text-brand hover:underline">
-              Ôn lại {overview.reviewCount} câu đến hạn hôm nay →
+              Ôn tập {overview.reviewCount} mục đến hạn hôm nay →
             </Link>
           </div>
         </section>

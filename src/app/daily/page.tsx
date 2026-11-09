@@ -150,14 +150,14 @@ export default async function DailyPage({
                 Bạn đã hoàn thành kế hoạch {plan.levelCode}!
               </h2>
               <p className="mx-auto mt-2 max-w-xl text-sm text-muted">
-                Hãy dành thêm vài phút ôn lại những câu đã từng trả lời sai để kiến thức thật sự
-                chắc.
+                Hãy dành thêm vài phút ôn lại từ vựng theo lịch giãn cách và những câu đã từng trả
+                lời sai để kiến thức thật sự chắc.
               </p>
               <Link
                 href="/review"
                 className="btn-primary mt-5 inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold"
               >
-                Ôn tập câu sai
+                Ôn tập kiến thức
                 <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
               </Link>
             </div>

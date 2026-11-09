@@ -50,7 +50,7 @@ export const NAV_GROUPS: NavGroup[] = [
     key: "review",
     label: "Ôn tập",
     href: "/review",
-    items: [{ href: "/review", key: "review", label: "Ôn tập câu sai" }],
+    items: [{ href: "/review", key: "review", label: "Ôn tập từ vựng & câu sai" }],
   },
 ];
 

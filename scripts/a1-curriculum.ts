@@ -7,7 +7,7 @@ export const A1_LEVEL: SeedLevel = {
   name: "Khởi đầu",
   tagline: "Nền tảng vững chắc",
   description:
-    "Xây nền tảng tiếng Anh thật chắc: 20 bài ngữ pháp cốt lõi, 18 chủ đề từ vựng và 252 từ/cụm từ thiết thực cho giao tiếp hằng ngày.",
+    "Xây nền tảng tiếng Anh thật chắc: 20 bài ngữ pháp cốt lõi, 25 chủ đề từ vựng với 1.500 từ/cụm từ thiết thực cho giao tiếp hằng ngày.",
   grammar: A1_GRAMMAR,
   vocab: A1_VOCAB,
 };

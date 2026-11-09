@@ -2804,7 +2804,7 @@ _20 từ/cụm từ về luật môi trường, chiến dịch cộng đồng, t
 
 ## Ghi chú kiểm tra
 
-- 2000 từ, không trùng lặp.
-- Không trùng với bộ A1 hiện có.
+- 2000 từ, không trùng lặp trong nội bộ A2.
+- A1 và A2 có thể dùng chung từ nền tảng; mỗi cấp vẫn được kiểm tra trùng riêng.
 - Đủ 6 trường: từ, IPA, từ loại, nghĩa Việt, nghĩa Anh, ví dụ.
 - Mỗi bài đúng 20 từ; mỗi chủ đề 4 bài.

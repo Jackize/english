@@ -7,7 +7,7 @@ Web học IELTS theo lộ trình A1 → C2 dành cho người Việt: ngữ phá
 - **Lộ trình CEFR** — 6 cấp độ A1 → C2 với tiến độ từng cấp và từng bài
 - **Kế hoạch theo ngày** — chia mỗi cấp độ thành các buổi học ngắn, mỗi ngày gồm 1 bài ngữ pháp + 1 chủ đề từ vựng, kèm mục tiêu hiện tại
 - **Ngữ pháp** — 40 bài, lý thuyết + trắc nghiệm (A1: 20 bài / 120 câu hỏi)
-- **Từ vựng** — 28 chủ đề / 28 bài / 332 từ; A1 gồm 18 chủ đề / 252 từ, câu hỏi quiz tự sinh từ danh sách từ
+- **Từ vựng** — 50 chủ đề / 200 bài / 3.500 từ; A1 gồm 25 chủ đề / 1.500 từ và A2 gồm 25 chủ đề / 2.000 từ, câu hỏi quiz tự sinh từ danh sách từ
 - **Ôn tập câu sai** — câu trả lời sai được lưu và luyện lại
 - **Gamification** — XP, streak, cây phát triển 6 giai đoạn
 - **Admin** — thêm / sửa / xóa bài học, nội dung lý thuyết, từ vựng và câu hỏi
@@ -15,9 +15,9 @@ Web học IELTS theo lộ trình A1 → C2 dành cho người Việt: ngữ phá
 ### A1 hiện có
 
 - **20 bài ngữ pháp**: to be, mạo từ, danh từ số nhiều, this/that/these/those, there is/are, hiện tại đơn, hiện tại tiếp diễn, can, mệnh lệnh, some/any, much/many, giới từ thời gian, từ để hỏi, quá khứ đơn, be going to, would like, đại từ tân ngữ và so sánh hơn.
-- **18 chủ đề từ vựng / 252 từ**: chào hỏi, quốc gia, gia đình, nhà cửa, thời gian, thói quen, thức ăn, trường học, nghề nghiệp, sở thích, quần áo, giao thông, địa điểm, sức khỏe, thời tiết, số đếm, màu sắc, động vật.
-- **372 câu hỏi A1**: 120 câu ngữ pháp + 252 câu từ vựng, mỗi câu có giải thích.
-- **Kế hoạch 20 ngày**: mỗi ngày 1 bài ngữ pháp + 1 chủ đề từ vựng; 2 ngày cuối củng cố ngữ pháp.
+- **25 chủ đề từ vựng / 1.500 từ**: chào hỏi, quốc gia, gia đình, nhà cửa, thời gian, thói quen, thức ăn, trường học, nghề nghiệp, sở thích, quần áo, giao thông, địa điểm, sức khỏe, thời tiết, số đếm, màu sắc, động vật, ngoại hình, cảm xúc & tính cách, thể thao, du lịch, công nghệ, lễ hội, môi trường.
+- **1.620 câu hỏi A1**: 120 câu ngữ pháp + 1.500 câu từ vựng, mỗi câu có giải thích.
+- **Kế hoạch theo ngày**: mỗi ngày 1 bài ngữ pháp + 1 chủ đề từ vựng, tự động chia theo tiến độ từng cấp độ.
 
 ## Tech Stack
 

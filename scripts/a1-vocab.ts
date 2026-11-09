@@ -1,4 +1,5 @@
 import type { SeedVocabTopic, SeedWord } from "./curriculum-data";
+import { A1_EXPANSIONS, A1_NEW_TOPICS } from "./a1-expansion";
 
 function w(
   word: string,
@@ -12,10 +13,10 @@ function w(
 }
 
 /**
- * 18 chủ đề từ vựng A1, mỗi chủ đề 14 từ/cụm từ.
- * Nội dung ưu tiên từ vựng nền tảng, collocations và mẫu câu dùng được ngay.
+ * 18 chủ đề A1 gốc, mỗi chủ đề 14 từ/cụm từ.
+ * Phần mở rộng (3 bài/chủ đề + 7 chủ đề mới) nằm trong ./a1-expansion.
  */
-export const A1_VOCAB: SeedVocabTopic[] = [
+export const A1_CORE_VOCAB: SeedVocabTopic[] = [
   {
     name: "Chào hỏi & giới thiệu",
     slug: "chao-hoi-gioi-thieu",
@@ -384,7 +385,7 @@ Lỗi thường gặp:
         w("wash your face", "/wɒʃ jɔː feɪs/", "phrase", "rửa mặt", "to clean your face with water", "He washes his face every morning."),
         w("have breakfast", "/hæv ˈbrekfəst/", "phrase", "ăn sáng", "to eat a morning meal", "We have breakfast at seven."),
         w("have lunch", "/hæv lʌntʃ/", "phrase", "ăn trưa", "to eat a midday meal", "I have lunch at school."),
-        w("have dinner", "/hæv ˈdɪnə/", "phrase", "ăn tối", "to eat an evening meal", "My family has dinner at seven."),
+        w("have dinner", "/hæv ˈdɪnə/", "phrase", "ăn tối", "to eat an evening meal", "We have dinner at seven."),
         w("go to work", "/ɡəʊ tə wɜːk/", "phrase", "đi làm", "to travel to your job", "My father goes to work by bus."),
         w("go to school", "/ɡəʊ tə skuːl/", "phrase", "đi học", "to go to a place to learn", "The children go to school every day."),
         w("come home", "/kʌm həʊm/", "phrase", "về nhà", "to return to your home", "I come home at five o'clock."),
@@ -1181,4 +1182,27 @@ Lỗi thường gặp:
       ],
     },
   },
+];
+
+/**
+ * 25 chủ đề A1, mỗi chủ đề 4 bài × 15 từ.
+ * Tổng: 1.500 từ/cụm từ.
+ */
+export const A1_VOCAB: SeedVocabTopic[] = [
+  ...A1_CORE_VOCAB.map((topic) => {
+    const expansion = A1_EXPANSIONS[topic.slug];
+    if (!expansion || !topic.lesson) return topic;
+
+    return {
+      ...topic,
+      lessons: [
+        {
+          ...topic.lesson,
+          words: [...topic.lesson.words, expansion.extraWord],
+        },
+        ...expansion.lessons,
+      ],
+    };
+  }),
+  ...A1_NEW_TOPICS,
 ];

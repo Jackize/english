@@ -30,7 +30,7 @@ export function HeaderBar({ active, user, continueLesson }: HeaderBarProps) {
   const isAdmin = user?.role === "ADMIN";
 
   return (
-    <header className="sticky top-0 z-50 border-b border-line/80 bg-background/90 backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-line/70 bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 w-full max-w-[1120px] items-center justify-between gap-4 px-5 md:px-8">
         <div className="flex shrink-0 items-center gap-6 xl:gap-8">
           <BrandLogo />
@@ -46,8 +46,8 @@ export function HeaderBar({ active, user, continueLesson }: HeaderBarProps) {
                     href={group.href}
                     className={
                       groupActive
-                        ? "whitespace-nowrap border-b-2 border-brand pb-0.5 text-sm font-semibold text-ink"
-                        : "whitespace-nowrap text-sm font-medium text-muted transition-colors hover:text-brand"
+                        ? "whitespace-nowrap rounded-full bg-surface px-3.5 py-1.5 text-sm font-semibold text-ink shadow-[0_1px_2px_rgba(14,30,21,0.06)] ring-1 ring-line"
+                        : "whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium text-muted transition-colors hover:bg-surface hover:text-ink"
                     }
                   >
                     {group.label}
@@ -69,8 +69,8 @@ export function HeaderBar({ active, user, continueLesson }: HeaderBarProps) {
                     onClick={() => setSkillsOpen((open) => !open)}
                     className={
                       groupActive
-                        ? "flex items-center gap-0.5 whitespace-nowrap border-b-2 border-brand pb-0.5 text-sm font-semibold text-ink"
-                        : "flex items-center gap-0.5 whitespace-nowrap text-sm font-medium text-muted transition-colors hover:text-brand"
+                        ? "flex items-center gap-0.5 whitespace-nowrap rounded-full bg-surface px-3.5 py-1.5 text-sm font-semibold text-ink shadow-[0_1px_2px_rgba(14,30,21,0.06)] ring-1 ring-line"
+                        : "flex items-center gap-0.5 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium text-muted transition-colors hover:bg-surface hover:text-ink"
                     }
                   >
                     {group.label}
@@ -115,7 +115,7 @@ export function HeaderBar({ active, user, continueLesson }: HeaderBarProps) {
           {continueLesson ? (
             <Link
               href={`/lesson/${continueLesson.id}`}
-              className="hidden min-w-0 max-w-[280px] items-center gap-2 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-dark xl:inline-flex"
+              className="btn-primary hidden min-w-0 max-w-[280px] items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark xl:inline-flex"
             >
               <span className="min-w-0 truncate">Tiếp tục học: {continueLesson.title}</span>
               <span className="material-symbols-outlined shrink-0 text-[18px]">arrow_forward</span>
@@ -169,7 +169,7 @@ export function HeaderBar({ active, user, continueLesson }: HeaderBarProps) {
           ) : (
             <Link
               href="/login"
-              className="rounded-full bg-brand px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-dark"
+              className="btn-primary rounded-full px-5 py-2 text-sm font-semibold text-white hover:bg-brand-dark"
             >
               Đăng nhập
             </Link>

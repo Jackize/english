@@ -4,12 +4,12 @@ export const LEVEL_META: Record<
   LevelCode,
   { name: string; tagline: string; short: string; color: string; soft: string }
 > = {
-  A1: { name: "Khởi đầu", tagline: "Nền tảng vững chắc", short: "A1", color: "#166534", soft: "#eaf7ee" },
-  A2: { name: "Sơ cấp", tagline: "Giao tiếp tự tin hơn", short: "A2", color: "#15803d", soft: "#ecfdf3" },
-  B1: { name: "Trung cấp", tagline: "Xử lý tình huống đa dạng", short: "B1", color: "#0f766e", soft: "#ecfdf5" },
+  A1: { name: "Khởi đầu", tagline: "Nền tảng vững chắc", short: "A1", color: "#17663d", soft: "#e6f3ea" },
+  A2: { name: "Sơ cấp", tagline: "Giao tiếp tự tin hơn", short: "A2", color: "#1f7a4a", soft: "#e9f6ee" },
+  B1: { name: "Trung cấp", tagline: "Xử lý tình huống đa dạng", short: "B1", color: "#24765e", soft: "#e8f5f0" },
   B2: { name: "Trung cao cấp", tagline: "Tư duy học thuật", short: "B2", color: "#0e7490", soft: "#ecfeff" },
-  C1: { name: "Cao cấp", tagline: "Học thuật & tinh tế", short: "C1", color: "#4338ca", soft: "#eef2ff" },
-  C2: { name: "Thành thạo", tagline: "Tinh chỉnh như người bản xứ", short: "C2", color: "#7c2d12", soft: "#fff7ed" },
+  C1: { name: "Cao cấp", tagline: "Học thuật & tinh tế", short: "C1", color: "#245a7a", soft: "#e9f1f7" },
+  C2: { name: "Thành thạo", tagline: "Tinh chỉnh như người bản xứ", short: "C2", color: "#8a5a14", soft: "#faf3e6" },
 };
 
 export interface PlantStage {

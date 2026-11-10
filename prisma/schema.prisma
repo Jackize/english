@@ -141,7 +141,6 @@ model LessonProgress {
   id          String    @id @default(cuid())
   userId      String
   lessonId    String
-  theoryDone  Boolean   @default(false)
   bestScore   Int       @default(0)
   quizTotal   Int       @default(0)
   attempts    Int       @default(0)

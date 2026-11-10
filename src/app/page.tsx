@@ -119,13 +119,10 @@ export default async function HomePage() {
                       </span>
                       <div className="flex-1">
                         <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-brand">
-                          {next.theoryDone ? "Đã học" : "Bắt đầu"}
+                          Bắt đầu
                         </div>
                         <div className="text-sm font-semibold text-ink">Học kiến thức</div>
                       </div>
-                      {next.theoryDone ? (
-                        <span className="material-symbols-outlined text-[20px] text-brand">check_circle</span>
-                      ) : null}
                     </div>
                     <div className="flex items-center gap-3 rounded-2xl border border-line px-4 py-3">
                       <span className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-muted text-xs font-bold text-muted">

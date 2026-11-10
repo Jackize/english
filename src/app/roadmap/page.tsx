@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
-import { getOverview, type LevelOverview, type LessonCard } from "@/lib/learning";
+import { getOverview, type LevelOverview, type LessonCard, type TopicGroup } from "@/lib/learning";
 import { LEVEL_META, type LevelCode } from "@/lib/curriculum";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
@@ -305,6 +305,19 @@ function LevelDetail({ level, levels }: { level: LevelOverview; levels: LevelOve
   const percent = level.total ? Math.round((level.completed / level.total) * 100) : 0;
   const topicsWithLessons = level.vocabulary.topics.filter((topic) => topic.lessons.length > 0);
 
+  // Mở khóa tuần tự: bài từ vựng đầu tiên luôn mở; bài kế tiếp chỉ mở khi bài
+  // liền trước trong toàn chặng (theo `order`) đã hoàn thành. Bài đang học dở
+  // vẫn được giữ mở để không chặn người dùng giữa chừng.
+  const vocabFlat = topicsWithLessons.flatMap((topic) => topic.lessons);
+  const lockedById = new Map<string, boolean>();
+  vocabFlat.forEach((lesson, index) => {
+    const previousDone = index === 0 || vocabFlat[index - 1].completed;
+    const unlocked = lesson.completed || lesson.bestScore > 0 || previousDone;
+    lockedById.set(lesson.id, !unlocked);
+  });
+  const isTopicLocked = (topic: TopicGroup) =>
+    topic.lessons.length > 0 && (lockedById.get(topic.lessons[0].id) ?? false);
+
   return (
     <section className={`${container} pb-12`} aria-labelledby="level-heading">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -396,36 +409,75 @@ function LevelDetail({ level, levels }: { level: LevelOverview; levels: LevelOve
               </span>
             </summary>
 
-            <div className="border-t border-line p-3 md:p-4">
+            <div className="border-t border-line">
               {topicsWithLessons.length > 0 ? (
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {topicsWithLessons.map((topic) => (
-                    <details
-                      key={topic.id}
-                      className="group/topic rounded-xl border border-line bg-surface-muted/30"
-                    >
-                      <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2.5 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
-                        <span className="material-symbols-outlined text-[16px] text-brand/70">
-                          {topic.icon}
-                        </span>
-                        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
-                          {topic.name}
-                        </span>
-                        <span className="shrink-0 text-xs text-muted">{topic.lessons.length} bài</span>
-                        <span className="material-symbols-outlined shrink-0 text-[18px] text-muted transition-transform group-open/topic:rotate-180">
-                          expand_more
-                        </span>
-                      </summary>
-                      <div className="space-y-1 border-t border-line p-2">
-                        {topic.lessons.map((lesson) => (
-                          <CompactLesson key={lesson.id} lesson={lesson} />
-                        ))}
-                      </div>
-                    </details>
-                  ))}
-                </div>
+                <ol className="divide-y divide-line">
+                  {topicsWithLessons.map((topic) => {
+                    const locked = isTopicLocked(topic);
+                    const completed = topic.lessons.filter((lesson) => lesson.completed).length;
+
+                    if (locked) {
+                      return (
+                        <li key={topic.id}>
+                          <div
+                            className="flex min-h-14 items-center gap-3 px-4 py-2.5 md:px-5"
+                            aria-disabled="true"
+                          >
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-muted text-muted">
+                              <span className="material-symbols-outlined text-[16px]">lock</span>
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate text-sm font-semibold text-muted">
+                                {topic.name}
+                              </div>
+                              <div className="mt-0.5 text-xs text-muted">
+                                {topic.lessons.length} bài · Hoàn thành chủ đề trước để mở khóa
+                              </div>
+                            </div>
+                            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-surface-muted px-2.5 py-1 text-[10px] font-semibold text-muted">
+                              <span className="material-symbols-outlined text-[13px]">lock</span>
+                              Khóa
+                            </span>
+                          </div>
+                        </li>
+                      );
+                    }
+
+                    return (
+                      <li key={topic.id}>
+                        <details className="group/topic">
+                          <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 py-2.5 transition-colors hover:bg-brand-soft/30 [&::-webkit-details-marker]:hidden md:px-5">
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-brand">
+                              <span className="material-symbols-outlined text-[16px]">{topic.icon}</span>
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate text-sm font-semibold text-ink">
+                                {topic.name}
+                              </div>
+                              <div className="mt-0.5 text-xs text-muted">
+                                {completed}/{topic.lessons.length} bài
+                              </div>
+                            </div>
+                            <span className="material-symbols-outlined shrink-0 text-[18px] text-muted transition-transform group-open/topic:rotate-180">
+                              expand_more
+                            </span>
+                          </summary>
+                          <div className="space-y-1 border-t border-line bg-surface-muted/20 p-2">
+                            {topic.lessons.map((lesson) => (
+                              <CompactLesson
+                                key={lesson.id}
+                                lesson={lesson}
+                                locked={lockedById.get(lesson.id) ?? false}
+                              />
+                            ))}
+                          </div>
+                        </details>
+                      </li>
+                    );
+                  })}
+                </ol>
               ) : (
-                <p className="px-1 py-2 text-sm text-muted">Chưa có bài từ vựng.</p>
+                <p className="px-4 py-5 text-sm text-muted">Chưa có bài từ vựng.</p>
               )}
             </div>
           </details>
@@ -435,8 +487,32 @@ function LevelDetail({ level, levels }: { level: LevelOverview; levels: LevelOve
   );
 }
 
-function CompactLesson({ lesson }: { lesson: LessonCard }) {
-  const started = !lesson.completed && (lesson.theoryDone || lesson.bestScore > 0);
+function CompactLesson({ lesson, locked = false }: { lesson: LessonCard; locked?: boolean }) {
+  const started = !lesson.completed && lesson.bestScore > 0;
+
+  if (locked) {
+    return (
+      <div
+        className="flex min-h-11 cursor-not-allowed items-center gap-3 rounded-lg px-2.5 py-2 opacity-70"
+        aria-disabled="true"
+      >
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-surface-muted text-muted">
+          <span className="material-symbols-outlined text-[15px]">lock</span>
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-pretty text-sm font-medium leading-snug text-muted">
+            {lesson.title}
+          </span>
+          <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted">
+            <span>{lesson.questionCount} câu</span>
+            <span>·</span>
+            <span>{lesson.estimatedMinutes} phút</span>
+          </span>
+        </span>
+        <span className="material-symbols-outlined shrink-0 text-[18px] text-muted/60">lock</span>
+      </div>
+    );
+  }
 
   return (
     <Link

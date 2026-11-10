@@ -11,7 +11,7 @@ export function LessonStatus({ lesson }: { lesson: LessonCard }) {
       </span>
     );
   }
-  if (lesson.theoryDone || lesson.bestScore > 0) {
+  if (lesson.bestScore > 0) {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-[#fdf3e2] px-2.5 py-1 text-[11px] font-semibold text-gold">
         <span className="material-symbols-outlined text-[14px]">progress_activity</span>
@@ -46,7 +46,7 @@ export function LessonRow({
         className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
           lesson.completed
             ? "bg-brand text-white"
-            : lesson.theoryDone
+            : lesson.bestScore > 0
               ? "bg-brand-soft text-brand"
               : "bg-surface-muted text-muted"
         }`}

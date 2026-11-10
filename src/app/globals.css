@@ -261,3 +261,24 @@ footer summary:focus-visible {
 .animate-rise {
   animation: rise 0.35s ease-out both;
 }
+
+/* Flashcard 3D flip (học từ vựng). */
+.flashcard-scene {
+  perspective: 1600px;
+}
+
+.flashcard-inner {
+  display: grid;
+  transform-style: preserve-3d;
+  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.flashcard-face {
+  grid-area: 1 / 1;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.flashcard-face--back {
+  transform: rotateY(180deg);
+}

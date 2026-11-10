@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import type { LearnerLesson } from "@/lib/learning";
 import { buildWrittenPrompts, type WrittenDirection } from "@/lib/vocabulary-quiz";
 import { ProgressBar } from "@/components/ui/Progress";
+import { VocabFlashcards } from "@/components/lesson/VocabFlashcards";
 import { useToast } from "@/components/ui/Toast";
 
 type Tab = "learn" | "quiz";
@@ -88,14 +89,6 @@ function LessonBody({ body }: { body: string }) {
   );
 }
 
-function speak(text: string) {
-  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = "en-US";
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.speak(utterance);
-}
-
 export function LessonExperience({
   lesson,
   canSave = false,
@@ -106,8 +99,6 @@ export function LessonExperience({
   const router = useRouter();
   const { showToast } = useToast();
   const [tab, setTab] = useState<Tab>("learn");
-  const [theoryDone, setTheoryDone] = useState(lesson.progress.theoryDone);
-  const [marking, setMarking] = useState(false);
 
   const [quizStarted, setQuizStarted] = useState(false);
   const [examStage, setExamStage] = useState<ExamStage>("choice");
@@ -118,9 +109,6 @@ export function LessonExperience({
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<QuizResult | null>(null);
-
-  const lessonEndRef = useRef<HTMLDivElement | null>(null);
-  const markingRef = useRef(false);
 
   const totalQuestions = lesson.questions.length;
   const answeredCount = Object.keys(answers).length;
@@ -151,57 +139,6 @@ export function LessonExperience({
     [lesson.progress],
   );
 
-  const markTheoryDone = useCallback(async () => {
-    if (!canSave || theoryDone || markingRef.current) return;
-    markingRef.current = true;
-    setMarking(true);
-    try {
-      const response = await fetch(`/api/lessons/${lesson.id}/theory`, { method: "POST" });
-      if (!response.ok) throw new Error("Cannot save theory progress");
-      setTheoryDone(true);
-      router.refresh();
-    } catch {
-      showToast({
-        variant: "error",
-        title: "Chưa lưu được tiến độ",
-        description: "Kết nối có thể bị gián đoạn. Bạn vẫn có thể bấm nút đánh dấu để thử lại.",
-        action: { label: "Thử lại", onClick: () => void markTheoryDone() },
-      });
-    } finally {
-      markingRef.current = false;
-      setMarking(false);
-    }
-  }, [canSave, lesson.id, router, showToast, theoryDone]);
-
-  // Tự ghi nhận lý thuyết khi người học đọc đến cuối bài (sentinel cuối trang).
-  useEffect(() => {
-    if (!canSave || theoryDone || tab !== "learn") return;
-    const node = lessonEndRef.current;
-    if (!node || typeof IntersectionObserver === "undefined") return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          observer.disconnect();
-          void markTheoryDone();
-        }
-      },
-      { rootMargin: "0px 0px -15% 0px", threshold: 0.2 },
-    );
-
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [canSave, markTheoryDone, tab, theoryDone]);
-
-  // Fallback: nếu người học đọc lâu mà chưa cuộn hết, tự ghi nhận sau 30 giây.
-  useEffect(() => {
-    if (!canSave || theoryDone || tab !== "learn") return;
-    const timer = window.setTimeout(() => {
-      void markTheoryDone();
-    }, 30_000);
-    return () => window.clearTimeout(timer);
-  }, [canSave, markTheoryDone, tab, theoryDone]);
-
   function choose(choiceId: string) {
     if (!question) return;
     // Chế độ thi thật: chỉ ghi nhận lựa chọn, không chấm từng câu.
@@ -209,7 +146,6 @@ export function LessonExperience({
   }
 
   function goToQuiz() {
-    void markTheoryDone();
     setTab("quiz");
     setTimeout(() => {
       document.getElementById("lesson-tabs")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -231,7 +167,6 @@ export function LessonExperience({
       if (!response.ok) throw new Error("Không thể nộp bài");
       const data = (await response.json()) as QuizResult;
       setResult(data);
-      setTheoryDone(true);
       router.refresh();
     } catch {
       // Keep the quiz state so the learner can try submitting again.
@@ -338,10 +273,7 @@ export function LessonExperience({
               }`}
             >
               <span className="material-symbols-outlined text-[16px]">menu_book</span>
-              Học kiến thức
-              {theoryDone ? (
-                <span className="material-symbols-outlined text-[14px] text-brand">check_circle</span>
-              ) : null}
+              Học
             </button>
             <button
               type="button"
@@ -372,10 +304,7 @@ export function LessonExperience({
             }`}
           >
             <span className="material-symbols-outlined text-[18px]">menu_book</span>
-            Học kiến thức
-            {theoryDone ? (
-              <span className="material-symbols-outlined text-[16px] text-brand">check_circle</span>
-            ) : null}
+            Học
           </button>
           <button
             type="button"
@@ -400,118 +329,44 @@ export function LessonExperience({
       <div className="mx-auto w-full max-w-[1120px] px-5 py-10 md:px-8">
         {tab === "learn" ? (
           <div className="grid gap-8 lg:grid-cols-[1fr_300px]">
-            <div className="space-y-6">
-              {lesson.sections.map((section, index) => (
-                <section key={section.id} className="card p-6 md:p-7">
-                  <div className="mb-4 flex items-center gap-3">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-soft text-xs font-bold text-brand">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                    <h2 className="display text-xl text-ink md:text-2xl">{section.title}</h2>
-                  </div>
-                  <LessonBody body={section.body} />
-                  {section.remember ? (
-                    <div className="mt-5 flex gap-3 rounded-xl border border-brand/15 bg-brand-soft/50 p-4">
-                      <span className="material-symbols-outlined text-[20px] text-brand">
-                        lightbulb
+            {isVocabulary ? (
+              <VocabFlashcards vocab={lesson.vocab} onGoToQuiz={goToQuiz} />
+            ) : (
+              <div className="space-y-6">
+                {lesson.sections.map((section, index) => (
+                  <section key={section.id} className="card p-6 md:p-7">
+                    <div className="mb-4 flex items-center gap-3">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-soft text-xs font-bold text-brand">
+                        {String(index + 1).padStart(2, "0")}
                       </span>
-                      <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand">
-                          Ghi nhớ nhanh
-                        </div>
-                        <p className="mt-1 text-sm leading-relaxed text-ink">{section.remember}</p>
-                      </div>
+                      <h2 className="display text-xl text-ink md:text-2xl">{section.title}</h2>
                     </div>
-                  ) : null}
-                </section>
-              ))}
-
-              {lesson.vocab.length > 0 ? (
-                <section className="card p-6 md:p-7">
-                  <div className="mb-4 flex items-center justify-between">
-                    <h2 className="display text-xl text-ink md:text-2xl">Danh sách từ</h2>
-                    <span className="text-[11px] text-muted">{lesson.vocab.length} từ</span>
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {lesson.vocab.map((entry) => (
-                      <div
-                        key={entry.id}
-                        className="rounded-xl border border-line bg-surface-muted/30 p-4"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <div className="flex flex-wrap items-baseline gap-2">
-                              <span className="text-base font-bold text-ink">{entry.word}</span>
-                              {entry.wordForm ? (
-                                <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">
-                                  {entry.wordForm}
-                                </span>
-                              ) : null}
-                            </div>
-                            {entry.ipa ? (
-                              <div className="text-xs text-muted">{entry.ipa}</div>
-                            ) : null}
+                    <LessonBody body={section.body} />
+                    {section.remember ? (
+                      <div className="mt-5 flex gap-3 rounded-xl border border-brand/15 bg-brand-soft/50 p-4">
+                        <span className="material-symbols-outlined text-[20px] text-brand">
+                          lightbulb
+                        </span>
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand">
+                            Ghi nhớ nhanh
                           </div>
-                          <button
-                            type="button"
-                            aria-label={`Nghe ${entry.word}`}
-                            onClick={() => speak(entry.word)}
-                            className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-surface text-muted transition-colors hover:bg-brand-soft hover:text-brand"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">volume_up</span>
-                          </button>
+                          <p className="mt-1 text-sm leading-relaxed text-ink">{section.remember}</p>
                         </div>
-                        <div className="mt-2 text-sm font-semibold text-brand">{entry.meaningVi}</div>
-                        {entry.meaningEn ? (
-                          <div className="mt-1 text-[11px] text-muted">{entry.meaningEn}</div>
-                        ) : null}
-                        {entry.example ? (
-                          <div className="mt-2 text-xs italic leading-relaxed text-muted">
-                            “{entry.example}”
-                          </div>
-                        ) : null}
                       </div>
-                    ))}
-                  </div>
-                </section>
-              ) : null}
+                    ) : null}
+                  </section>
+                ))}
 
-              <div
-                ref={lessonEndRef}
-                className="flex flex-col justify-between gap-3 rounded-2xl border border-line bg-surface p-5 sm:flex-row sm:items-center"
-              >
-                <div>
-                  <div className="text-sm font-semibold text-ink">
-                    {theoryDone
-                      ? "Đã ghi nhận bạn học xong phần lý thuyết."
-                      : marking
-                        ? "Đang ghi nhận tiến độ..."
-                        : "Đã nắm nội dung?"}
+                <div className="flex flex-col justify-between gap-3 rounded-2xl border border-line bg-surface p-5 sm:flex-row sm:items-center">
+                  <div>
+                    <div className="text-sm font-semibold text-ink">Sẵn sàng kiểm tra?</div>
+                    <div className="text-xs text-muted">
+                      {!canSave
+                        ? "Đăng nhập để hệ thống lưu tiến độ học của bạn."
+                        : "Làm bài kiểm tra đạt từ 70% để hoàn thành bài học."}
+                    </div>
                   </div>
-                  <div className="text-xs text-muted">
-                    {!canSave
-                      ? "Đăng nhập để hệ thống lưu tiến độ học của bạn."
-                      : theoryDone
-                        ? "Bạn có thể làm bài kiểm tra để hoàn thành bài học."
-                        : "Hệ thống tự ghi nhận khi bạn đọc đến cuối bài hoặc sau 30 giây. Bạn vẫn có thể bấm nút để đánh dấu ngay."}
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={markTheoryDone}
-                    disabled={theoryDone || marking || !canSave}
-                    className={`inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-colors ${
-                      theoryDone
-                        ? "bg-brand-soft text-brand"
-                        : "border border-line bg-surface text-ink hover:border-brand/30 hover:text-brand"
-                    } disabled:opacity-80`}
-                  >
-                    <span className="material-symbols-outlined text-[18px]">
-                      {theoryDone ? "check_circle" : "task_alt"}
-                    </span>
-                    {marking ? "Đang lưu..." : theoryDone ? "Đã học xong" : "Đánh dấu đã học"}
-                  </button>
                   <button
                     type="button"
                     onClick={goToQuiz}
@@ -522,7 +377,7 @@ export function LessonExperience({
                   </button>
                 </div>
               </div>
-            </div>
+            )}
 
             <aside className="space-y-4 lg:sticky lg:top-32 lg:self-start">
               <div className="card p-5">
@@ -530,12 +385,6 @@ export function LessonExperience({
                   Tiến độ bài học
                 </div>
                 <div className="mt-3 flex items-center justify-between text-sm">
-                  <span className="text-muted">Lý thuyết</span>
-                  <span className={theoryDone ? "font-semibold text-brand" : "text-muted"}>
-                    {theoryDone ? "Đã học" : "Chưa học"}
-                  </span>
-                </div>
-                <div className="mt-2 flex items-center justify-between text-sm">
                   <span className="text-muted">Điểm cao nhất</span>
                   <span className="font-semibold text-ink">
                     {lesson.progress.bestScore}/{lesson.progress.quizTotal}
@@ -553,7 +402,11 @@ export function LessonExperience({
                   Cách học hiệu quả
                 </div>
                 <ul className="mt-3 space-y-2 text-xs leading-relaxed text-muted">
-                  <li>• Đọc ví dụ và tự đặt một câu mới.</li>
+                  <li>
+                    {lesson.track === "vocabulary"
+                      ? "• Tự nhớ nghĩa trước khi lật thẻ."
+                      : "• Đọc ví dụ và tự đặt một câu mới."}
+                  </li>
                   <li>• Làm bài kiểm tra ngay sau khi học.</li>
                   <li>
                     {lesson.track === "vocabulary"

@@ -8,18 +8,6 @@ import {
 } from "./vocab-review";
 import { buildWrittenPrompts, type WrittenDirection } from "./vocabulary-quiz";
 
-export async function completeTheory(userId: string, lessonId: string) {
-  const progress = await prisma.lessonProgress.upsert({
-    where: { userId_lessonId: { userId, lessonId } },
-    create: { userId, lessonId, theoryDone: true },
-    update: { theoryDone: true },
-  });
-
-  await registerVocabularyForLesson(userId, lessonId);
-  await touchStreak(userId);
-  return progress;
-}
-
 export interface QuizDetail {
   questionId: string;
   prompt: string;
@@ -138,7 +126,6 @@ export async function submitQuiz(
       create: {
         userId,
         lessonId,
-        theoryDone: true,
         attempts: 1,
         bestScore: score,
         quizTotal: total,
@@ -146,7 +133,6 @@ export async function submitQuiz(
         completedAt: passed ? new Date() : null,
       },
       update: {
-        theoryDone: true,
         attempts: { increment: 1 },
         bestScore: Math.max(existing?.bestScore ?? 0, score),
         quizTotal: total,

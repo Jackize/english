@@ -319,7 +319,7 @@ function TaskLink({ task, compact = false }: { task: DailyTask; compact?: boolea
   const { lesson } = task;
   const label = task.kind === "grammar" ? "Ngữ pháp" : "Từ vựng";
   const icon = lesson.completed ? "check" : task.kind === "grammar" ? "rule" : "auto_stories";
-  const started = !lesson.completed && (lesson.theoryDone || lesson.bestScore > 0);
+  const started = !lesson.completed && lesson.bestScore > 0;
 
   return (
     <Link

@@ -82,8 +82,7 @@ export function buildDailyPlan(level: LevelOverview): DailyPlan {
       tasks,
       completed: tasks.length > 0 && tasks.every((task) => task.lesson.completed),
       started: tasks.some(
-        (task) =>
-          task.lesson.completed || task.lesson.theoryDone || task.lesson.bestScore > 0,
+        (task) => task.lesson.completed || task.lesson.bestScore > 0,
       ),
       estimatedMinutes: tasks.reduce((sum, task) => sum + task.lesson.estimatedMinutes, 0),
       questionCount: tasks.reduce((sum, task) => sum + task.lesson.questionCount, 0),

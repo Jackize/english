@@ -4,7 +4,7 @@ import type { DailyTask } from "@/lib/daily-plan";
 export function DailyTaskRow({ task }: { task: DailyTask }) {
   const { lesson } = task;
   const completed = lesson.completed;
-  const started = !completed && (lesson.theoryDone || lesson.bestScore > 0);
+  const started = !completed && lesson.bestScore > 0;
   const label = task.kind === "grammar" ? "Ngữ pháp" : "Từ vựng";
   const icon = completed ? "check" : task.kind === "grammar" ? "rule" : "auto_stories";
 

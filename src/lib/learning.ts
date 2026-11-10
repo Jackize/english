@@ -13,7 +13,6 @@ export interface LessonCard {
   questionCount: number;
   wordCount: number;
   completed: boolean;
-  theoryDone: boolean;
   bestScore: number;
   quizTotal: number;
 }
@@ -110,7 +109,7 @@ type LessonRecord = {
 function toLessonCard(
   lesson: LessonRecord,
   progress:
-    | { completed: boolean; theoryDone: boolean; bestScore: number; quizTotal: number }
+    | { completed: boolean; bestScore: number; quizTotal: number }
     | undefined,
 ): LessonCard {
   return {
@@ -124,7 +123,6 @@ function toLessonCard(
     questionCount: lesson._count.questions,
     wordCount: lesson._count.vocab,
     completed: progress?.completed ?? false,
-    theoryDone: progress?.theoryDone ?? false,
     bestScore: progress?.bestScore ?? 0,
     quizTotal: progress?.quizTotal ?? lesson._count.questions,
   };
@@ -176,7 +174,6 @@ export const getOverview = cache(async (userId?: string, levelCode?: LevelCode):
           lessonId: true,
           completed: true,
           completedAt: true,
-          theoryDone: true,
           bestScore: true,
           quizTotal: true,
           lesson: { select: { estimatedMinutes: true } },
@@ -412,7 +409,7 @@ export const getContinueLesson = cache(async (userId?: string) => {
     where: {
       userId,
       completed: false,
-      OR: [{ theoryDone: true }, { bestScore: { gt: 0 } }],
+      bestScore: { gt: 0 },
     },
     orderBy: { updatedAt: "desc" },
     include: { lesson: { include: { level: true } } },
@@ -519,7 +516,6 @@ export async function getLessonForLearner(lessonId: string, userId?: string) {
     })),
     progress: {
       completed: progress?.completed ?? false,
-      theoryDone: progress?.theoryDone ?? false,
       bestScore: progress?.bestScore ?? 0,
       quizTotal: progress?.quizTotal ?? lesson.questions.length,
       attempts: progress?.attempts ?? 0,
@@ -620,7 +616,6 @@ export async function getTopicDetail(levelCode: string, slug: string, userId?: s
         select: {
           lessonId: true,
           completed: true,
-          theoryDone: true,
           bestScore: true,
           quizTotal: true,
         },

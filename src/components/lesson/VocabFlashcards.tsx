@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ProgressBar } from "@/components/ui/Progress";
+import { speakEnglish } from "@/lib/speech";
 
 export interface FlashcardEntry {
   id: string;
@@ -67,14 +68,6 @@ function buildExercises(vocab: FlashcardEntry[]): MiniExercise[] {
       blank,
     };
   });
-}
-
-function speak(text: string) {
-  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = "en-US";
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.speak(utterance);
 }
 
 export function VocabFlashcards({
@@ -260,7 +253,7 @@ export function VocabFlashcards({
                 aria-label={`Nghe ${entry.word}`}
                 onClick={(event) => {
                   event.stopPropagation();
-                  speak(entry.word);
+                  speakEnglish(entry.word);
                 }}
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-soft text-brand transition-colors hover:bg-brand hover:text-white"
               >

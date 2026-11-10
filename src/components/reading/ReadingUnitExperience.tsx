@@ -8,18 +8,14 @@ import {
   type ReadingUnit,
 } from "@/lib/reading-types";
 import { ProgressBar } from "@/components/ui/Progress";
+import { speakEnglish } from "@/lib/speech";
 
 type ChoiceAnswers = Record<string, string>;
 type MatchAnswers = Record<string, Record<string, string>>;
 type TextAnswers = Record<string, string>;
 
 function speak(text: string) {
-  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = "en-GB";
-  utterance.rate = 0.92;
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.speak(utterance);
+  speakEnglish(text, { rate: 0.95 });
 }
 
 function normalizeAnswer(value: string) {

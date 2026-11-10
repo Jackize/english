@@ -3,78 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ProgressBar } from "@/components/ui/Progress";
 import { speakEnglish } from "@/lib/speech";
-
-export interface FlashcardEntry {
-  id: string;
-  word: string;
-  ipa: string | null;
-  wordForm: string | null;
-  meaningVi: string;
-  meaningEn: string | null;
-  example: string | null;
-}
-
-type MiniExercise =
-  | { kind: "mcq"; word: string; meaningVi: string; choices: string[]; correctIndex: number }
-  | { kind: "fill"; word: string; meaningVi: string; example: string | null; blank: string | null };
-
-function shuffle<T>(items: T[]): T[] {
-  const copy = [...items];
-  for (let i = copy.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
-}
-
-function escapeRegex(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function buildExercises(vocab: FlashcardEntry[]): MiniExercise[] {
-  return vocab.map((entry, index) => {
-    // Xen kẽ trắc nghiệm / điền từ để buổi học không bị một màu.
-    if (index % 2 === 0) {
-      const seen = new Set<string>([entry.meaningVi]);
-      const distractors: string[] = [];
-      for (const other of shuffle(vocab.filter((_, j) => j !== index))) {
-        if (distractors.length >= 3) break;
-        if (seen.has(other.meaningVi)) continue;
-        seen.add(other.meaningVi);
-        distractors.push(other.meaningVi);
-      }
-      const choices = shuffle([entry.meaningVi, ...distractors]);
-      return {
-        kind: "mcq",
-        word: entry.word,
-        meaningVi: entry.meaningVi,
-        choices,
-        correctIndex: choices.indexOf(entry.meaningVi),
-      };
-    }
-
-    let blank: string | null = null;
-    if (entry.example) {
-      const pattern = new RegExp(`\\b${escapeRegex(entry.word)}\\b`, "i");
-      if (pattern.test(entry.example)) {
-        blank = entry.example.replace(pattern, "______");
-      }
-    }
-    return {
-      kind: "fill",
-      word: entry.word,
-      meaningVi: entry.meaningVi,
-      example: entry.example,
-      blank,
-    };
-  });
-}
+import { buildExercises, type ExerciseWord } from "@/lib/flashcard-exercises";
 
 export function VocabFlashcards({
   vocab,
   onGoToQuiz,
 }: {
-  vocab: FlashcardEntry[];
+  vocab: ExerciseWord[];
   onGoToQuiz: () => void;
 }) {
   const [index, setIndex] = useState(0);
@@ -84,6 +19,7 @@ export function VocabFlashcards({
   const [selected, setSelected] = useState<number | null>(null);
   const [typed, setTyped] = useState("");
   const [checked, setChecked] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const exercises = useMemo(() => buildExercises(vocab), [vocab]);
   const entry = vocab[index];
@@ -97,6 +33,19 @@ export function VocabFlashcards({
       ? selected === exercise.correctIndex
       : typed.trim().toLowerCase() === exercise.word.toLowerCase();
 
+  // Tự động đọc từ mới khi mở thẻ.
+  useEffect(() => {
+    if (!finished) speakEnglish(vocab[index].word);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index]);
+
+  // Tự động focus ô điền khi sang bài điền vào chỗ trống.
+  useEffect(() => {
+    if (stage === "quiz" && exercise.kind === "fill") {
+      inputRef.current?.focus();
+    }
+  }, [stage, exercise]);
+
   function goToExercise() {
     setFlipped(false);
     setStage("quiz");
@@ -105,7 +54,6 @@ export function VocabFlashcards({
   function choose(choiceIndex: number) {
     if (checked) return;
     setSelected(choiceIndex);
-    setChecked(true);
   }
 
   function next() {
@@ -145,6 +93,30 @@ export function VocabFlashcards({
       const onControl =
         target instanceof HTMLElement &&
         (target.tagName === "BUTTON" || target.tagName === "A");
+
+      if (event.key === "Shift") {
+        // Nhấn Shift (không kèm phím khác) để nghe lại từ.
+        if (!event.repeat && !inField) {
+          speakEnglish(vocab[index].word);
+        }
+        return;
+      }
+
+      // Phím số 1–4 để chọn nhanh đáp án trắc nghiệm.
+      if (/^[1-9]$/.test(event.key)) {
+        const choiceIndex = Number(event.key) - 1;
+        if (
+          stage === "quiz" &&
+          exercise.kind === "mcq" &&
+          !checked &&
+          !inField &&
+          choiceIndex < exercise.choices.length
+        ) {
+          event.preventDefault();
+          choose(choiceIndex);
+        }
+        return;
+      }
 
       if (event.code === "Space") {
         if (stage === "card" && !inField && !onControl) {
@@ -211,9 +183,9 @@ export function VocabFlashcards({
           <span>
             {stage === "card"
               ? flipped
-                ? "Nhấn Enter để làm bài tập"
-                : "Nhấn Space để lật thẻ"
-              : "Trả lời rồi nhấn Enter để tiếp tục"}
+                ? "Enter để làm bài tập · Shift để nghe lại"
+                : "Space để lật thẻ · Shift để nghe lại"
+              : "Enter để tiếp tục · Shift để nghe lại"}
           </span>
         </div>
         <ProgressBar
@@ -297,8 +269,8 @@ export function VocabFlashcards({
 
           {exercise.kind === "mcq" ? (
             <>
-              <h2 className="display mt-3 text-2xl leading-snug text-ink md:text-[26px]">
-                Nghĩa của “{exercise.word}” là gì?
+              <h2 className="display mt-4 text-3xl leading-snug text-ink md:text-4xl">
+                {exercise.word}
               </h2>
               <div className="mt-5 space-y-2.5">
                 {exercise.choices.map((choice, choiceIndex) => {
@@ -329,7 +301,7 @@ export function VocabFlashcards({
                               : "bg-surface-muted text-muted"
                         }`}
                       >
-                        {String.fromCharCode(65 + choiceIndex)}
+                        {choiceIndex + 1}
                       </span>
                       <span className="text-sm text-ink">{choice}</span>
                       {checked && isCorrectChoice ? (
@@ -344,18 +316,19 @@ export function VocabFlashcards({
             </>
           ) : (
             <>
-              <h2 className="display mt-3 text-2xl leading-snug text-ink md:text-[26px]">
-                Từ tiếng Anh cho nghĩa này là gì?
+              <h2 className="display mt-4 text-3xl leading-snug text-ink md:text-4xl">
+                {exercise.meaningVi}
               </h2>
-              <p className="mt-3 text-base font-semibold text-ink">{exercise.meaningVi}</p>
               {exercise.blank ? (
                 <p className="mt-2 text-sm italic leading-relaxed text-muted">
                   “{exercise.blank}”
                 </p>
               ) : null}
               <input
+                ref={inputRef}
                 value={typed}
                 onChange={(event) => setTyped(event.target.value)}
+                autoFocus
                 autoComplete="off"
                 autoCapitalize="none"
                 spellCheck={false}
@@ -395,7 +368,11 @@ export function VocabFlashcards({
                 ? isLast
                   ? "Đã xong từ cuối cùng."
                   : "Nhấn Enter để sang từ tiếp theo."
-                : "Nhấn Enter để kiểm tra đáp án."}
+                : canSubmit
+                  ? "Nhấn Enter để kiểm tra đáp án."
+                  : exercise.kind === "mcq"
+                    ? "Bấm 1–4 để chọn, Enter để kiểm tra."
+                    : "Gõ đáp án rồi nhấn Kiểm tra."}
             </span>
             <button
               type="button"

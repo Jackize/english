@@ -73,11 +73,11 @@ export function vocabLevelMeta(level: number) {
 }
 
 /**
- * Mức 1–2 ưu tiên chiều Anh → Việt (nhận biết/tiếp nhận).
- * Mức 3–5 chuyển sang Việt → Anh (tái tạo chủ động).
+ * Luôn ôn theo chiều Việt → Anh: hiển thị nghĩa tiếng Việt, người học gõ từ
+ * tiếng Anh để chủ động tái tạo và ghi nhớ.
  */
-export function directionForLevel(level: number): WrittenDirection {
-  return clampLevel(level) <= 2 ? "en-vi" : "vi-en";
+export function directionForLevel(): WrittenDirection {
+  return "vi-en";
 }
 
 /** Chuẩn hoá câu trả lời: bỏ dấu tiếng Việt, dấu câu, khoảng trắng thừa. */
@@ -307,7 +307,7 @@ export async function getVocabularyReview(userId: string) {
 
   const items = dueItems.map((item) => {
     const level = clampLevel(item.level);
-    const direction = directionForLevel(level);
+    const direction = directionForLevel();
     const meta = VOCAB_REVIEW_LEVELS[level - 1];
 
     return {
@@ -372,7 +372,7 @@ export async function answerVocabularyReview(
   if (!item) throw new Error("Vocabulary review item not found");
 
   const previousLevel = clampLevel(item.level);
-  const direction = directionForLevel(previousLevel);
+  const direction = directionForLevel();
   const alternatives =
     direction === "vi-en"
       ? (

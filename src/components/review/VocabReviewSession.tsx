@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { getVocabularyReview } from "@/lib/vocab-review";
 import type { WrittenDirection } from "@/lib/vocabulary-quiz";
 import { ProgressBar } from "@/components/ui/Progress";
 import { useToast } from "@/components/ui/Toast";
+import { speakEnglish } from "@/lib/speech";
 
 type ReviewData = Awaited<ReturnType<typeof getVocabularyReview>>;
 type ReviewItem = ReviewData["items"][number];
@@ -28,6 +29,10 @@ export function VocabReviewSession({ items }: { items: ReviewItem[] }) {
   const [correctCount, setCorrectCount] = useState(0);
   const [finished, setFinished] = useState(items.length === 0);
 
+  const inputRef = useRef<HTMLInputElement>(null);
+  const nextRef = useRef<() => void>(() => {});
+  const sendRef = useRef<() => void>(() => {});
+
   const item = round[index];
 
   async function sendAnswer() {
@@ -44,6 +49,8 @@ export function VocabReviewSession({ items }: { items: ReviewItem[] }) {
 
       const result = (await response.json()) as Feedback;
       setFeedback(result);
+      // Đọc từ tiếng Anh sau khi bấm kiểm tra (tránh lộ đáp án trước).
+      speakEnglish(item.direction === "vi-en" ? result.expectedAnswer : item.prompt);
 
       if (result.correct) {
         setCorrectCount((value) => value + 1);
@@ -84,6 +91,39 @@ export function VocabReviewSession({ items }: { items: ReviewItem[] }) {
     setCorrectCount(0);
     setFinished(false);
   }
+
+  nextRef.current = next;
+  sendRef.current = () => void sendAnswer();
+
+  // Enter để kiểm tra / sang từ tiếp theo; tự focus ô điền khi chuyển từ.
+  useEffect(() => {
+    if (!finished && !feedback) inputRef.current?.focus();
+  }, [index, feedback, finished, round]);
+
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key !== "Enter" || finished || sending) return;
+      const target = event.target as HTMLElement | null;
+      const inField =
+        target instanceof HTMLElement &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable);
+
+      if (feedback) {
+        // Input bị disable sau khi kiểm tra nên bắt Enter ở window.
+        event.preventDefault();
+        nextRef.current();
+        return;
+      }
+      if (!inField && answer.trim()) {
+        event.preventDefault();
+        sendRef.current();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [answer, feedback, finished, sending]);
 
   if (items.length === 0) {
     return (
@@ -188,6 +228,7 @@ export function VocabReviewSession({ items }: { items: ReviewItem[] }) {
             Câu trả lời
           </label>
           <input
+            ref={inputRef}
             id="vocab-review-answer"
             value={answer}
             onChange={(event) => setAnswer(event.target.value)}

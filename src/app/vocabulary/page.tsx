@@ -49,6 +49,13 @@ export default async function VocabularyPage({
                 <span className="material-symbols-outlined text-[15px]">calendar_month</span>
                 Học theo kế hoạch ngày →
               </Link>
+              <Link
+                href="/vocabulary/learned"
+                className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-muted transition-colors hover:text-brand"
+              >
+                <span className="material-symbols-outlined text-[15px]">auto_stories</span>
+                Xem các từ đã học →
+              </Link>
             </div>
 
             <div className="w-full max-w-xs rounded-xl border border-line bg-surface p-4">

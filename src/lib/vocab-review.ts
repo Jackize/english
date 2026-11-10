@@ -179,6 +179,74 @@ export async function registerVocabularyForLesson(userId: string, lessonId: stri
   return result.count;
 }
 
+/**
+ * Danh sách toàn bộ từ người dùng đã học. Một từ được tính là "đã học" khi nó
+ * đã được đưa vào lịch ôn (sau khi hoàn thành lý thuyết hoặc làm bài kiểm tra
+ * từ vựng của bài tương ứng).
+ */
+export async function getLearnedVocabulary(userId: string) {
+  const rows = await prisma.vocabReviewItem.findMany({
+    where: { userId },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    include: {
+      vocab: {
+        select: {
+          id: true,
+          word: true,
+          ipa: true,
+          wordForm: true,
+          meaningVi: true,
+          meaningEn: true,
+          example: true,
+          lesson: {
+            select: {
+              id: true,
+              title: true,
+              level: { select: { code: true, name: true } },
+              topic: { select: { name: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return rows.map((row) => {
+    const level = clampLevel(row.level);
+    const meta = VOCAB_REVIEW_LEVELS[level - 1];
+
+    return {
+      id: row.id,
+      vocabId: row.vocab.id,
+      word: row.vocab.word,
+      ipa: row.vocab.ipa,
+      wordForm: row.vocab.wordForm,
+      meaningVi: row.vocab.meaningVi,
+      meaningEn: row.vocab.meaningEn,
+      example: row.vocab.example,
+      level,
+      levelName: meta.name,
+      levelShortName: meta.shortName,
+      correctStreak: row.correctStreak,
+      wrongCount: row.wrongCount,
+      lastReviewedAt: row.lastReviewedAt?.toISOString() ?? null,
+      dueAt: row.dueAt.toISOString(),
+      createdAt: row.createdAt.toISOString(),
+      lesson: {
+        id: row.vocab.lesson.id,
+        title: row.vocab.lesson.title,
+        levelCode: row.vocab.lesson.level.code,
+        levelName: row.vocab.lesson.level.name,
+        topicName: row.vocab.lesson.topic?.name ?? null,
+      },
+    };
+  });
+}
+
+export async function getLearnedVocabularyCount(userId: string) {
+  return prisma.vocabReviewItem.count({ where: { userId } });
+}
+
 export async function getVocabularyReview(userId: string) {
   const dueEnd = endOfToday();
 

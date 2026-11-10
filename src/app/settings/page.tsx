@@ -2,10 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { getOverview } from "@/lib/learning";
+import { getLearnedVocabularyCount } from "@/lib/vocab-review";
 import { LEVEL_META } from "@/lib/curriculum";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { GoalSettings } from "@/components/settings/GoalSettings";
+import { ResetProgressCard } from "@/components/settings/ResetProgressCard";
 
 export const metadata = {
   title: "Cài đặt học tập · Eng Growth",
@@ -16,6 +18,7 @@ export default async function SettingsPage() {
   if (!session?.user?.id) redirect("/login?callbackUrl=/settings");
 
   const overview = await getOverview(session.user.id);
+  const learnedWords = await getLearnedVocabularyCount(session.user.id);
   const target = overview.onboarding.targetLevel;
   const placement = overview.onboarding.placementLevel;
 
@@ -36,7 +39,7 @@ export default async function SettingsPage() {
           </p>
         </section>
 
-        <section className="mx-auto grid w-full max-w-[1120px] gap-5 px-5 pb-20 md:px-8 lg:grid-cols-[1fr_340px]">
+        <section className="mx-auto grid w-full max-w-[1120px] gap-5 px-5 pb-5 md:px-8 lg:grid-cols-[1fr_340px]">
           <GoalSettings
             initialLessons={overview.dailyGoal.targetLessons}
             initialMinutes={overview.dailyGoal.targetMinutes}
@@ -70,6 +73,23 @@ export default async function SettingsPage() {
               </Link>
             </div>
 
+            <div className="card p-5">
+              <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
+                Vốn từ của bạn
+              </div>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="display text-3xl text-ink">{learnedWords}</span>
+                <span className="text-sm text-muted">từ đã học</span>
+              </div>
+              <Link
+                href="/vocabulary/learned"
+                className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-brand hover:underline"
+              >
+                Xem các từ đã học
+                <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+              </Link>
+            </div>
+
             <div className="rounded-2xl border border-brand/15 bg-brand-soft/40 p-5">
               <div className="flex items-center gap-2 text-sm font-semibold text-brand">
                 <span className="material-symbols-outlined text-[18px]">lightbulb</span>
@@ -82,6 +102,13 @@ export default async function SettingsPage() {
               </ul>
             </div>
           </aside>
+        </section>
+
+        <section className="mx-auto w-full max-w-[1120px] px-5 pb-20 md:px-8">
+          <ResetProgressCard
+            completedLessons={overview.completedLessons}
+            learnedWords={learnedWords}
+          />
         </section>
       </main>
       <SiteFooter />

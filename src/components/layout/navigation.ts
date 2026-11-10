@@ -4,6 +4,7 @@ export type NavKey =
   | "roadmap"
   | "grammar"
   | "vocabulary"
+  | "learned"
   | "reading"
   | "writing"
   | "review"
@@ -42,6 +43,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/grammar", key: "grammar", label: "Ngữ pháp" },
       { href: "/vocabulary", key: "vocabulary", label: "Từ vựng" },
+      { href: "/vocabulary/learned", key: "learned", label: "Từ đã học" },
       { href: "/reading", key: "reading", label: "Đọc hiểu" },
       { href: "/writing", key: "writing", label: "Viết" },
     ],

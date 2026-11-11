@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { submitVocabQuiz } from "@/lib/progress";
+import { completeVocabLesson } from "@/lib/progress";
 
 export async function POST(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await auth();
@@ -14,14 +14,11 @@ export async function POST(
   const { id } = await params;
 
   try {
-    const body = (await request.json()) as {
-      answers?: { vocabId: string; kind: "mcq" | "fill"; answer: string }[];
-    };
-    const result = await submitVocabQuiz(session.user.id, id, body.answers ?? []);
+    const result = await completeVocabLesson(session.user.id, id);
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Quiz failed" },
+      { error: error instanceof Error ? error.message : "Complete failed" },
       { status: 400 },
     );
   }

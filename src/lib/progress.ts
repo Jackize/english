@@ -229,137 +229,53 @@ export async function submitQuiz(
 }
 
 // ---------------------------------------------------------------------------
-// Kiểm tra từ vựng dạng xen kẽ (trắc nghiệm + điền từ) — thay cho bài thi cũ
-// gồm trắc nghiệm rồi đến hai chiều tự luận Việt→Anh / Anh→Việt.
+// Hoàn thành bài từ vựng bằng cách học xong flashcard (không có bài kiểm tra).
+// Ghi nhận completed + XP lần đầu, đưa từ vựng vào lịch ôn, giữ nguyên nếu đã
+// hoàn thành trước đó.
 // ---------------------------------------------------------------------------
-export async function submitVocabQuiz(
-  userId: string,
-  lessonId: string,
-  answers: { vocabId: string; kind: "mcq" | "fill"; answer: string }[],
-) {
+export async function completeVocabLesson(userId: string, lessonId: string) {
   const lesson = await prisma.lesson.findUnique({
     where: { id: lessonId },
     include: { vocab: { orderBy: { order: "asc" } } },
   });
 
   if (!lesson) throw new Error("Lesson not found");
-  if (lesson.vocab.length === 0) throw new Error("Lesson has no vocabulary");
-
-  const vocabById = new Map(lesson.vocab.map((entry) => [entry.id, entry]));
-
-  const details = answers
-    .map((item) => {
-      const entry = vocabById.get(item.vocabId);
-      if (!entry) return null;
-      const answer = item.answer.trim();
-      let correct = false;
-      let expected = "";
-      if (item.kind === "mcq") {
-        expected = entry.meaningVi;
-        correct =
-          normalizeVocabularyAnswer(answer) === normalizeVocabularyAnswer(entry.meaningVi);
-      } else {
-        expected = entry.word;
-        correct = normalizeVocabularyAnswer(answer) === normalizeVocabularyAnswer(entry.word);
-      }
-      return {
-        vocabId: entry.id,
-        word: entry.word,
-        meaningVi: entry.meaningVi,
-        kind: item.kind,
-        correct,
-        answer,
-        expected,
-      };
-    })
-    .filter((item): item is NonNullable<typeof item> => item !== null);
-
-  const score = details.filter((detail) => detail.correct).length;
-  const total = details.length;
-  if (total === 0) throw new Error("Lesson has no questions");
-  const percent = Math.round((score / total) * 100);
-  const passed = percent >= 70;
+  if (lesson.track !== "vocabulary" || lesson.vocab.length === 0) {
+    throw new Error("Lesson has no vocabulary");
+  }
 
   const existing = await prisma.lessonProgress.findUnique({
     where: { userId_lessonId: { userId, lessonId } },
   });
-  const firstCompletion = passed && !existing?.completed;
+  const firstCompletion = !existing?.completed;
+  const now = new Date();
 
-  await prisma.$transaction(async (tx) => {
-    await tx.lessonProgress.upsert({
-      where: { userId_lessonId: { userId, lessonId } },
-      create: {
-        userId,
-        lessonId,
-        attempts: 1,
-        bestScore: score,
-        quizTotal: total,
-        completed: passed,
-        completedAt: passed ? new Date() : null,
-      },
-      update: {
-        attempts: { increment: 1 },
-        bestScore: Math.max(existing?.bestScore ?? 0, score),
-        quizTotal: total,
-        completed: existing?.completed || passed,
-        completedAt:
-          existing?.completed && existing.completedAt
-            ? existing.completedAt
-            : passed
-              ? new Date()
-              : null,
-      },
-    });
-
-    await tx.quizAttempt.create({
-      data: { userId, lessonId, score, total },
-    });
-
-    if (firstCompletion) {
-      await tx.user.update({
-        where: { id: userId },
-        data: { xp: { increment: lesson.xp } },
-      });
-    }
+  await prisma.lessonProgress.upsert({
+    where: { userId_lessonId: { userId, lessonId } },
+    create: {
+      userId,
+      lessonId,
+      attempts: 1,
+      completed: true,
+      completedAt: now,
+    },
+    update: {
+      completed: true,
+      completedAt: existing?.completedAt ?? now,
+    },
   });
 
-  await registerVocabularyForLesson(userId, lessonId);
-
-  // Từ trả lời sai quay về mức 1 và đến hạn ôn ngay.
-  const wrong = details.filter((detail) => !detail.correct);
-  if (wrong.length > 0) {
-    const now = new Date();
-    for (const detail of wrong) {
-      await prisma.vocabReviewItem.upsert({
-        where: { userId_vocabId: { userId, vocabId: detail.vocabId } },
-        create: {
-          userId,
-          vocabId: detail.vocabId,
-          level: 1,
-          wrongCount: 1,
-          dueAt: now,
-        },
-        update: {
-          level: 1,
-          correctStreak: 0,
-          wrongCount: { increment: 1 },
-          lastReviewedAt: now,
-          dueAt: now,
-        },
-      });
-    }
+  if (firstCompletion) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { xp: { increment: lesson.xp } },
+    });
   }
 
+  await registerVocabularyForLesson(userId, lessonId);
   await touchStreak(userId);
 
-  return {
-    score,
-    total,
-    percent,
-    passed,
-    details,
-    xpAwarded: firstCompletion ? lesson.xp : 0,
-  };
+  return { completed: true, xpAwarded: firstCompletion ? lesson.xp : 0 };
 }
 
 // Các mốc ôn tập giãn cách (ngày). Đúng thì tiến một mốc, sai thì quay về mốc đầu.

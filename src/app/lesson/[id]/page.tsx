@@ -31,13 +31,17 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
 
   if (!lesson) notFound();
 
+  // Bài từ vựng học dạng flashcard tập trung: ẩn header/footer để tránh xao
+  // nhãng, chỉ giữ nút back + nội dung flashcard/bài tập.
+  const isVocabulary = lesson.track === "vocabulary";
+
   return (
     <div className="flex min-h-screen flex-col">
-      <SiteHeader active={lesson.track === "grammar" ? "grammar" : "vocabulary"} />
+      {!isVocabulary ? <SiteHeader active="grammar" /> : null}
       <main className="flex-1">
         <LessonExperience lesson={lesson} canSave={Boolean(session?.user)} />
       </main>
-      <SiteFooter />
+      {!isVocabulary ? <SiteFooter /> : null}
     </div>
   );
 }

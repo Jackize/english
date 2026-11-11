@@ -7,7 +7,6 @@ import type { LearnerLesson } from "@/lib/learning";
 import { buildWrittenPrompts, type WrittenDirection } from "@/lib/vocabulary-quiz";
 import { ProgressBar } from "@/components/ui/Progress";
 import { VocabFlashcards } from "@/components/lesson/VocabFlashcards";
-import { QuizSession } from "@/components/lesson/QuizSession";
 import { useToast } from "@/components/ui/Toast";
 
 type Tab = "learn" | "quiz";
@@ -208,7 +207,7 @@ export function LessonExperience({
               <span className="material-symbols-outlined text-[18px]">arrow_back</span>
               {lesson.topic?.name ?? "Từ vựng"}
             </Link>
-            <span className="text-xs text-muted">{lesson.vocab.length} từ</span>
+            <span className="hidden text-xs text-muted sm:inline">{lesson.vocab.length} từ</span>
           </div>
         </header>
       ) : (
@@ -277,38 +276,8 @@ export function LessonExperience({
       </div>
       )}
 
-      {/* Tabs: mobile là segmented control không sticky; desktop mới sticky. */}
-      {isVocabulary ? (
-        <div className="mx-auto w-full max-w-2xl px-5 pt-5">
-          <div className="mx-auto grid max-w-[320px] grid-cols-2 gap-1 rounded-full border border-line bg-surface-muted p-1">
-            <button
-              type="button"
-              onClick={() => setTab("learn")}
-              className={`flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition-colors ${
-                tab === "learn" ? "bg-surface text-ink shadow-sm" : "text-muted"
-              }`}
-            >
-              <span className="material-symbols-outlined text-[16px]">menu_book</span>
-              Học
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab("quiz")}
-              className={`flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition-colors ${
-                tab === "quiz" ? "bg-surface text-ink shadow-sm" : "text-muted"
-              }`}
-            >
-              <span className="material-symbols-outlined text-[16px]">quiz</span>
-              Kiểm tra
-              {lesson.progress.bestScore > 0 ? (
-                <span className="rounded-full bg-brand-soft px-1.5 py-0.5 text-[9px] font-bold text-brand">
-                  {lesson.progress.bestScore}/{lesson.progress.quizTotal}
-                </span>
-              ) : null}
-            </button>
-          </div>
-        </div>
-      ) : (
+      {/* Tabs (chỉ cho bài ngữ pháp): mobile là segmented control, desktop sticky. */}
+      {!isVocabulary && (
       <div
         id="lesson-tabs"
         className="scroll-mt-32 border-b border-line bg-background/95 backdrop-blur lg:sticky lg:top-16 lg:z-40 lg:scroll-mt-20"
@@ -382,10 +351,9 @@ export function LessonExperience({
           isVocabulary ? "max-w-2xl" : "max-w-[1120px] md:px-8"
         }`}
       >
-        {tab === "learn" ? (
-          isVocabulary ? (
-            <VocabFlashcards vocab={lesson.vocab} onGoToQuiz={goToQuiz} />
-          ) : (
+        {isVocabulary ? (
+          <VocabFlashcards vocab={lesson.vocab} lessonId={lesson.id} canSave={canSave} />
+        ) : tab === "learn" ? (
             <div className="grid gap-8 lg:grid-cols-[1fr_300px]">
               <div className="space-y-6">
                 {lesson.sections.map((section, index) => (
@@ -480,9 +448,7 @@ export function LessonExperience({
             </aside>
           </div>
           )
-        ) : isVocabulary ? (
-          <QuizSession vocab={lesson.vocab} lessonId={lesson.id} />
-        ) : totalQuestions === 0 ? (
+        : totalQuestions === 0 ? (
           <div className="card mx-auto max-w-3xl p-8 text-center">
             <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-soft text-brand">
               <span className="material-symbols-outlined text-[28px]">edit_note</span>

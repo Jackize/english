@@ -1,17 +1,23 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ProgressBar } from "@/components/ui/Progress";
+import { useToast } from "@/components/ui/Toast";
 import { speakEnglish } from "@/lib/speech";
 import { buildExercises, type ExerciseWord } from "@/lib/flashcard-exercises";
 
 export function VocabFlashcards({
   vocab,
-  onGoToQuiz,
+  lessonId,
+  canSave = false,
 }: {
   vocab: ExerciseWord[];
-  onGoToQuiz: () => void;
+  lessonId: string;
+  canSave?: boolean;
 }) {
+  const router = useRouter();
+  const { showToast } = useToast();
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [stage, setStage] = useState<"card" | "quiz">("card");
@@ -19,7 +25,10 @@ export function VocabFlashcards({
   const [selected, setSelected] = useState<number | null>(null);
   const [typed, setTyped] = useState("");
   const [checked, setChecked] = useState(false);
+  const [completing, setCompleting] = useState(false);
+  const [xpAwarded, setXpAwarded] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const completedRef = useRef(false);
 
   const exercises = useMemo(() => buildExercises(vocab), [vocab]);
   const entry = vocab[index];
@@ -38,6 +47,42 @@ export function VocabFlashcards({
     if (!finished) speakEnglish(vocab[index].word);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index]);
+
+  // Học xong toàn bộ thẻ + bài tập => tự ghi nhận hoàn thành (nếu đã đăng nhập).
+  useEffect(() => {
+    if (!finished || !canSave || completedRef.current) return;
+    completedRef.current = true;
+    let cancelled = false;
+    async function complete() {
+      setCompleting(true);
+      try {
+        const response = await fetch(`/api/lessons/${lessonId}/complete`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+        if (!response.ok) throw new Error("Không thể ghi nhận");
+        const data = (await response.json()) as { xpAwarded: number };
+        if (!cancelled) {
+          setXpAwarded(data.xpAwarded);
+          router.refresh();
+        }
+      } catch {
+        if (!cancelled) {
+          showToast({
+            variant: "error",
+            title: "Chưa ghi nhận được tiến độ",
+            description: "Bài học vẫn được hoàn thành trên máy bạn. Hãy kiểm tra kết nối.",
+          });
+        }
+      } finally {
+        if (!cancelled) setCompleting(false);
+      }
+    }
+    void complete();
+    return () => {
+      cancelled = true;
+    };
+  }, [finished, canSave, lessonId, showToast, router]);
 
   // Tự động focus ô điền khi sang bài điền vào chỗ trống.
   useEffect(() => {
@@ -159,16 +204,38 @@ export function VocabFlashcards({
           Đã học xong {vocab.length} từ!
         </h2>
         <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
-          Giờ hãy làm bài kiểm tra để ghi nhận hoàn thành bài học.
+          {completing
+            ? "Đang ghi nhận tiến độ..."
+            : xpAwarded > 0
+              ? `Bạn đã nhận +${xpAwarded} XP. Các từ đã vào lịch ôn tập.`
+              : "Các từ vừa học sẽ xuất hiện trong mục Ôn tập để bạn ghi nhớ lâu hơn."}
         </p>
-        <button
-          type="button"
-          onClick={onGoToQuiz}
-          className="btn-primary mt-6 inline-flex items-center gap-2 rounded-full px-7 py-3 text-sm font-semibold"
-        >
-          Làm bài kiểm tra
-          <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-        </button>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setIndex(0);
+              setFlipped(false);
+              setStage("card");
+              setSelected(null);
+              setTyped("");
+              setChecked(false);
+              setFinished(false);
+            }}
+            className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-6 py-2.5 text-sm font-semibold text-ink hover:border-brand/30 hover:text-brand"
+          >
+            <span className="material-symbols-outlined text-[18px]">refresh</span>
+            Học lại
+          </button>
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="btn-primary inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold"
+          >
+            Quay lại
+            <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+          </button>
+        </div>
       </div>
     );
   }
@@ -183,9 +250,9 @@ export function VocabFlashcards({
           <span>
             {stage === "card"
               ? flipped
-                ? "Enter để làm bài tập · Shift để nghe lại"
-                : "Space để lật thẻ · Shift để nghe lại"
-              : "Enter để tiếp tục · Shift để nghe lại"}
+                ? "Bấm \"Làm bài tập\" để tiếp tục · Shift để nghe lại"
+                : "Bấm thẻ để lật · Shift để nghe lại"
+              : "Bấm nút để tiếp tục · Shift để nghe lại"}
           </span>
         </div>
         <ProgressBar
@@ -231,8 +298,19 @@ export function VocabFlashcards({
               >
                 <span className="material-symbols-outlined text-[20px]">volume_up</span>
               </button>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setFlipped((value) => !value);
+                }}
+                className="btn-primary mt-1 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold"
+              >
+                Xem nghĩa
+                <span className="material-symbols-outlined text-[18px]">sync_alt</span>
+              </button>
               <p className="text-xs text-muted">
-                Bấm thẻ hoặc nhấn Space để xem nghĩa.
+                Bấm thẻ hoặc nút để xem nghĩa.
               </p>
             </div>
 
@@ -252,7 +330,18 @@ export function VocabFlashcards({
                   “{entry.example}”
                 </p>
               ) : null}
-              <p className="text-xs text-muted">Nhấn Enter để làm bài tập.</p>
+              <p className="text-xs text-muted">Bấm nút bên dưới để làm bài tập.</p>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  goToExercise();
+                }}
+                className="btn-primary mt-1 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold"
+              >
+                Làm bài tập
+                <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+              </button>
             </div>
           </div>
         </div>
@@ -367,17 +456,17 @@ export function VocabFlashcards({
               {checked
                 ? isLast
                   ? "Đã xong từ cuối cùng."
-                  : "Nhấn Enter để sang từ tiếp theo."
+                  : "Bấm nút để sang từ tiếp theo."
                 : canSubmit
-                  ? "Nhấn Enter để kiểm tra đáp án."
+                  ? "Bấm nút để kiểm tra đáp án."
                   : exercise.kind === "mcq"
-                    ? "Bấm 1–4 để chọn, Enter để kiểm tra."
-                    : "Gõ đáp án rồi nhấn Kiểm tra."}
+                    ? "Bấm 1–4 để chọn đáp án."
+                    : "Gõ đáp án rồi bấm Kiểm tra."}
             </span>
             <button
               type="button"
               onClick={next}
-              disabled={!canSubmit}
+              disabled={!checked && !canSubmit}
               className="btn-primary inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
             >
               {checked ? (isLast ? "Hoàn thành" : "Từ tiếp theo") : "Kiểm tra"}

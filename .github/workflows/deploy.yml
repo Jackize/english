@@ -1,0 +1,82 @@
+# ============================================================
+# CD — deploy lên VPS qua SSH (rsync + docker compose).
+# Chỉ chạy khi bấm tay: Actions → tab "Deploy" → "Run workflow".
+# - Chọn job: "migrate" (chạy prisma migrate deploy) hoặc
+#   "production" (deploy app lên VPS) — KHÔNG tự chạy khi push.
+# ============================================================
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "Chọn thao tác deploy"
+        required: true
+        type: choice
+        default: production
+        options:
+          - migrate
+          - production
+
+jobs:
+  migrate:
+    name: Migrate database
+    if: github.event.inputs.job == 'migrate'
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npx prisma migrate deploy
+
+  production:
+    name: Deploy production
+    if: github.event.inputs.job == 'production'
+    runs-on: ubuntu-latest
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_DEPLOY_PATH: ${{ secrets.VPS_DEPLOY_PATH }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          echo "${{ secrets.VPS_DEPLOY_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+
+      - name: Sync source to VPS
+        run: |
+          rsync -a --delete \
+            --exclude node_modules --exclude .next --exclude .git \
+            --exclude .env --exclude "*.db" --exclude .DS_Store \
+            --exclude mockups --exclude .github \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            ./ "root@${VPS_HOST}:${VPS_DEPLOY_PATH}/repo/"
+
+      - name: Update DATABASE_URL secret on VPS
+        run: |
+          echo -n "${{ secrets.DATABASE_URL }}" | \
+            ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            "root@${VPS_HOST}" \
+            "cat > ${VPS_DEPLOY_PATH}/secrets/database_url && chmod 600 ${VPS_DEPLOY_PATH}/secrets/database_url"
+
+      - name: Build image & restart container
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "root@${VPS_HOST}" \
+            "cd ${VPS_DEPLOY_PATH} && docker compose build web && docker compose up -d && docker ps --filter name=english-vocab-app --format '{{.Status}}'"
+
+      - name: Warm-up
+        run: |
+          sleep 3
+          curl -s -o /dev/null --max-time 30 https://english.sanbong.cloud/ || true
+          curl -s -o /dev/null --max-time 30 https://english.sanbong.cloud/grammar || true

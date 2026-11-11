@@ -1,0 +1,56 @@
+# ============================================================
+# CI — chạy tự động mỗi khi push / mở PR lên main
+# (lint + typecheck + build). KHÔNG deploy ở đây.
+# Deploy chạy riêng qua workflow deploy.yml (bấm tay).
+# ============================================================
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint & typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Generate Prisma Client trước khi typecheck (client nằm trong src/generated)
+      - run: npx prisma generate
+
+      - run: npm run lint
+      - run: npx tsc --noEmit
+
+  build:
+    name: Build production
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+      NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      # Build cần DATABASE_URL để Next.js prerender page data (Prisma init lúc import)
+      - run: npm run build

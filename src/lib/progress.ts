@@ -35,16 +35,21 @@ export async function submitQuiz(
   answers: Record<string, string>,
   writtenAnswers?: Record<string, string>,
 ) {
-  const lesson = await prisma.lesson.findUnique({
-    where: { id: lessonId },
-    include: {
-      questions: {
-        orderBy: { order: "asc" },
-        include: { choices: { orderBy: { order: "asc" } } },
+  const [lesson, existing] = await Promise.all([
+    prisma.lesson.findUnique({
+      where: { id: lessonId },
+      include: {
+        questions: {
+          orderBy: { order: "asc" },
+          include: { choices: { orderBy: { order: "asc" } } },
+        },
+        vocab: { orderBy: { order: "asc" } },
       },
-      vocab: { orderBy: { order: "asc" } },
-    },
-  });
+    }),
+    prisma.lessonProgress.findUnique({
+      where: { userId_lessonId: { userId, lessonId } },
+    }),
+  ]);
 
   if (!lesson) throw new Error("Lesson not found");
   if (lesson.questions.length === 0 && lesson.vocab.length === 0) {
@@ -115,9 +120,6 @@ export async function submitQuiz(
   const percent = Math.round((score / total) * 100);
   const passed = percent >= 70;
 
-  const existing = await prisma.lessonProgress.findUnique({
-    where: { userId_lessonId: { userId, lessonId } },
-  });
   const firstCompletion = passed && !existing?.completed;
 
   await prisma.$transaction(async (tx) => {
@@ -157,25 +159,19 @@ export async function submitQuiz(
       });
     }
 
-    for (const detail of details) {
-      if (detail.correct) continue;
-
-      // Sai trong bài kiểm tra cũng đưa câu vào lịch ôn ngay hôm nay.
-      // Đúng trong bài kiểm tra không tự xoá lịch ôn — chỉ lượt ôn mới
-      // quyết định mốc giãn cách tiếp theo.
+    // Sai trong bài kiểm tra cũng đưa câu vào lịch ôn ngay hôm nay.
+    // Đúng trong bài kiểm tra không tự xoá lịch ôn — chỉ lượt ôn mới
+    // quyết định mốc giãn cách tiếp theo.
+    // Gộp thành 2 câu lệnh (thay vì 1 upsert mỗi câu sai): cập nhật các mục
+    // đã có, rồi tạo mới những mục chưa có.
+    const wrongQuestionIds = details
+      .filter((detail) => !detail.correct)
+      .map((detail) => detail.questionId);
+    if (wrongQuestionIds.length > 0) {
       const now = new Date();
-      await tx.reviewItem.upsert({
-        where: {
-          userId_questionId: { userId, questionId: detail.questionId },
-        },
-        create: {
-          userId,
-          questionId: detail.questionId,
-          wrongCount: 1,
-          resolved: false,
-          dueAt: now,
-        },
-        update: {
+      await tx.reviewItem.updateMany({
+        where: { userId, questionId: { in: wrongQuestionIds } },
+        data: {
           wrongCount: { increment: 1 },
           resolved: false,
           lastWrongAt: now,
@@ -184,38 +180,56 @@ export async function submitQuiz(
           dueAt: now,
         },
       });
+      await tx.reviewItem.createMany({
+        data: wrongQuestionIds.map((questionId) => ({
+          userId,
+          questionId,
+          wrongCount: 1,
+          resolved: false,
+          lastWrongAt: now,
+          dueAt: now,
+        })),
+        skipDuplicates: true,
+      });
     }
   });
 
-  await registerVocabularyForLesson(userId, lessonId);
+  const wrongVocabIds = writtenDetails
+    .filter((detail) => !detail.correct)
+    .map((detail) => detail.vocabId);
 
-  // Từ viết sai trong bài thi thật quay về mức 1 và đến hạn ôn ngay.
-  const wrongWritten = writtenDetails.filter((detail) => !detail.correct);
-  if (wrongWritten.length > 0) {
-    const now = new Date();
-    // Tuần tự từng upsert vì Prisma chỉ có 1 connection.
-    for (const detail of wrongWritten) {
-      await prisma.vocabReviewItem.upsert({
-        where: { userId_vocabId: { userId, vocabId: detail.vocabId } },
-        create: {
-          userId,
-          vocabId: detail.vocabId,
-          level: 1,
-          wrongCount: 1,
-          dueAt: now,
-        },
-        update: {
-          level: 1,
-          correctStreak: 0,
-          wrongCount: { increment: 1 },
-          lastReviewedAt: now,
-          dueAt: now,
-        },
-      });
-    }
-  }
-
-  await touchStreak(userId);
+  await Promise.all([
+    (async () => {
+      // Đưa từ của bài vào lịch ôn (mức 1, giữ nguyên từ đã có lịch sử).
+      await registerVocabularyForLesson(userId, lessonId, lesson);
+      // Từ viết sai trong bài thi thật quay về mức 1 và đến hạn ôn ngay.
+      if (wrongVocabIds.length > 0) {
+        const now = new Date();
+        await prisma.vocabReviewItem.updateMany({
+          where: { userId, vocabId: { in: wrongVocabIds } },
+          data: {
+            level: 1,
+            correctStreak: 0,
+            wrongCount: { increment: 1 },
+            lastReviewedAt: now,
+            dueAt: now,
+          },
+        });
+        await prisma.vocabReviewItem.createMany({
+          data: wrongVocabIds.map((vocabId) => ({
+            userId,
+            vocabId,
+            level: 1,
+            wrongCount: 1,
+            lastReviewedAt: now,
+            dueAt: now,
+          })),
+          skipDuplicates: true,
+        });
+      }
+    })(),
+    touchStreak(userId),
+  ]);
 
   return {
     score,
@@ -234,46 +248,48 @@ export async function submitQuiz(
 // hoàn thành trước đó.
 // ---------------------------------------------------------------------------
 export async function completeVocabLesson(userId: string, lessonId: string) {
-  const lesson = await prisma.lesson.findUnique({
-    where: { id: lessonId },
-    include: { vocab: { orderBy: { order: "asc" } } },
-  });
+  const [lesson, existing] = await Promise.all([
+    prisma.lesson.findUnique({
+      where: { id: lessonId },
+      include: { vocab: { orderBy: { order: "asc" } } },
+    }),
+    prisma.lessonProgress.findUnique({
+      where: { userId_lessonId: { userId, lessonId } },
+    }),
+  ]);
 
   if (!lesson) throw new Error("Lesson not found");
   if (lesson.track !== "vocabulary" || lesson.vocab.length === 0) {
     throw new Error("Lesson has no vocabulary");
   }
-
-  const existing = await prisma.lessonProgress.findUnique({
-    where: { userId_lessonId: { userId, lessonId } },
-  });
   const firstCompletion = !existing?.completed;
   const now = new Date();
 
-  await prisma.lessonProgress.upsert({
-    where: { userId_lessonId: { userId, lessonId } },
-    create: {
-      userId,
-      lessonId,
-      attempts: 1,
-      completed: true,
-      completedAt: now,
-    },
-    update: {
-      completed: true,
-      completedAt: existing?.completedAt ?? now,
-    },
-  });
-
-  if (firstCompletion) {
-    await prisma.user.update({
-      where: { id: userId },
-      data: { xp: { increment: lesson.xp } },
-    });
-  }
-
-  await registerVocabularyForLesson(userId, lessonId);
-  await touchStreak(userId);
+  // Các thao tác ghi độc lập với nhau nên chạy song song.
+  await Promise.all([
+    prisma.lessonProgress.upsert({
+      where: { userId_lessonId: { userId, lessonId } },
+      create: {
+        userId,
+        lessonId,
+        attempts: 1,
+        completed: true,
+        completedAt: now,
+      },
+      update: {
+        completed: true,
+        completedAt: existing?.completedAt ?? now,
+      },
+    }),
+    firstCompletion
+      ? prisma.user.update({
+          where: { id: userId },
+          data: { xp: { increment: lesson.xp } },
+        })
+      : null,
+    registerVocabularyForLesson(userId, lessonId, lesson),
+    touchStreak(userId),
+  ]);
 
   return { completed: true, xpAwarded: firstCompletion ? lesson.xp : 0 };
 }
@@ -318,17 +334,19 @@ export async function answerReviewItem(userId: string, reviewItemId: string, cho
       : nextReviewInterval(item.intervalDays);
     dueAt = mastered ? now : addDays(now, intervalDays);
 
-    await prisma.reviewItem.update({
-      where: { id: item.id },
-      data: {
-        resolved: mastered,
-        intervalDays,
-        correctStreak: { increment: 1 },
-        lastReviewedAt: now,
-        dueAt,
-      },
-    });
-    await touchStreak(userId);
+    await Promise.all([
+      prisma.reviewItem.update({
+        where: { id: item.id },
+        data: {
+          resolved: mastered,
+          intervalDays,
+          correctStreak: { increment: 1 },
+          lastReviewedAt: now,
+          dueAt,
+        },
+      }),
+      touchStreak(userId),
+    ]);
   } else {
     await prisma.reviewItem.update({
       where: { id: item.id },

@@ -11,7 +11,9 @@ const inter = Inter({
 });
 
 const materialSymbols = localFont({
-  src: "../fonts/MaterialSymbolsOutlined.ttf",
+  // Bản đã cắt chỉ chứa icon đang dùng (~40KB). Dùng icon mới thì chạy lại
+  // scripts/subset-material-symbols.py.
+  src: "../fonts/MaterialSymbolsOutlined-subset.woff2",
   variable: "--font-material-symbols",
   display: "swap",
   preload: true,

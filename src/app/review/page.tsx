@@ -24,10 +24,10 @@ export default async function ReviewPage() {
   };
 
   if (userId) {
-    // Chạy tuần tự vì Prisma client chỉ mở 1 connection (giới hạn pooler
-    // của Supabase). Chạy song song dễ vượt connectionTimeoutMillis khi DB chậm.
-    items = await getReviewItems(userId);
-    vocabulary = await getVocabularyReview(userId);
+    [items, vocabulary] = await Promise.all([
+      getReviewItems(userId),
+      getVocabularyReview(userId),
+    ]);
   }
 
   return (

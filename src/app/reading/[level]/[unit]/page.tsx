@@ -3,7 +3,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { LEVEL_META } from "@/lib/curriculum";
 import { getReadingUnit } from "@/lib/reading";
-import { prisma } from "@/lib/prisma";
 import { getReadingQuestionCount } from "@/lib/reading-types";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
@@ -19,18 +18,6 @@ const ReadingUnitExperience = dynamic(
     ),
   },
 );
-
-export const revalidate = 3600;
-
-export async function generateStaticParams() {
-  const units = await prisma.readingUnit.findMany({
-    select: { slug: true, level: { select: { code: true } } },
-  });
-  return units.map((unit) => ({
-    level: unit.level.code.toLowerCase(),
-    unit: unit.slug,
-  }));
-}
 
 export async function generateMetadata({
   params,

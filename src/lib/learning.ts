@@ -161,57 +161,73 @@ async function getCurriculumLevels() {
   return data;
 }
 
+/**
+ * Trạng thái học của một user trong request hiện tại: tiến độ từng bài, thông
+ * tin user và số mục ôn đến hạn. Dùng chung cho trang, header và nút "Tiếp tục
+ * học" (React cache) nên mỗi request chỉ query DB một lần, các query chạy song
+ * song.
+ */
+export const getUserLearningState = cache(async (userId: string) => {
+  const [progressRows, user, reviewCountRows] = await Promise.all([
+    prisma.lessonProgress.findMany({
+      where: { userId },
+      select: {
+        lessonId: true,
+        completed: true,
+        completedAt: true,
+        bestScore: true,
+        quizTotal: true,
+        updatedAt: true,
+      },
+    }),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        xp: true,
+        streak: true,
+        dailyGoalLessons: true,
+        dailyGoalMinutes: true,
+        onboardedAt: true,
+        targetLevel: true,
+        placementLevel: true,
+      },
+    }),
+    prisma.$queryRaw<{ count: bigint }[]>`
+      SELECT (
+        (SELECT COUNT(*) FROM "ReviewItem"
+          WHERE "userId" = ${userId}
+            AND "resolved" = false
+            AND "dueAt" < ${endOfToday()})
+        +
+        (SELECT COUNT(*) FROM "VocabReviewItem"
+          WHERE "userId" = ${userId}
+            AND "dueAt" < ${endOfToday()})
+      )::bigint AS count
+    `,
+  ]);
+
+  return {
+    progressRows,
+    user,
+    reviewCount: Number(reviewCountRows[0]?.count ?? 0),
+  };
+});
+
 export const getOverview = cache(async (userId?: string, levelCode?: LevelCode): Promise<Overview> => {
-  // Prisma client chỉ mở 1 connection (giới hạn pooler Supabase), nên chạy
-  // tuần tự. Promise.all không làm query nhanh hơn mà còn khiến các query
-  // phải chờ connection và có thể vượt connectionTimeoutMillis.
-  const levels = await getCurriculumLevels();
+  // Curriculum (cache RAM) và trạng thái user được lấy song song.
+  const [levels, state] = await Promise.all([
+    getCurriculumLevels(),
+    userId ? getUserLearningState(userId) : Promise.resolve(null),
+  ]);
 
-  const progressRows = userId
-    ? await prisma.lessonProgress.findMany({
-        where: { userId },
-        select: {
-          lessonId: true,
-          completed: true,
-          completedAt: true,
-          bestScore: true,
-          quizTotal: true,
-          lesson: { select: { estimatedMinutes: true } },
-        },
-      })
-    : [];
+  const progressRows = state?.progressRows ?? [];
+  const user = state?.user ?? null;
+  const reviewCount = state?.reviewCount ?? 0;
 
-  const user = userId
-    ? await prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-          xp: true,
-          streak: true,
-          dailyGoalLessons: true,
-          dailyGoalMinutes: true,
-          onboardedAt: true,
-          targetLevel: true,
-          placementLevel: true,
-        },
-      })
-    : null;
-
-  const reviewCountRows = userId
-    ? await prisma.$queryRaw<{ count: bigint }[]>`
-        SELECT (
-          (SELECT COUNT(*) FROM "ReviewItem"
-            WHERE "userId" = ${userId}
-              AND "resolved" = false
-              AND "dueAt" < ${endOfToday()})
-          +
-          (SELECT COUNT(*) FROM "VocabReviewItem"
-            WHERE "userId" = ${userId}
-              AND "dueAt" < ${endOfToday()})
-        )::bigint AS count
-      `
-    : [];
-
-  const reviewCount = Number(reviewCountRows[0]?.count ?? 0);
+  const minutesByLesson = new Map<string, number>();
+  for (const level of levels) {
+    for (const lesson of level.lessons) minutesByLesson.set(lesson.id, lesson.estimatedMinutes);
+  }
 
   const progressByLesson = new Map(progressRows.map((row) => [row.lessonId, row]));
 
@@ -341,7 +357,7 @@ export const getOverview = cache(async (userId?: string, levelCode?: LevelCode):
   );
   const completedToday = todayRows.length;
   const completedMinutesToday = todayRows.reduce(
-    (sum, row) => sum + row.lesson.estimatedMinutes,
+    (sum, row) => sum + (minutesByLesson.get(row.lessonId) ?? 0),
     0,
   );
   const targetLessons = Math.max(1, user?.dailyGoalLessons ?? 2);
@@ -389,58 +405,50 @@ export const getOverview = cache(async (userId?: string, levelCode?: LevelCode):
 
 export const getHeaderStats = cache(async (userId?: string) => {
   if (!userId) return null;
-  return prisma.user.findUnique({
-    where: { id: userId },
-    select: { streak: true, xp: true },
-  });
+  const state = await getUserLearningState(userId);
+  return state.user ? { streak: state.user.streak, xp: state.user.xp } : null;
 });
 
 export const getContinueLesson = cache(async (userId?: string) => {
   if (!userId) return null;
 
-  // Chạy tuần tự: Prisma chỉ có 1 connection nên Promise.all dễ gây timeout.
-  const levels = await getCurriculumLevels();
-  const completedRows = await prisma.lessonProgress.findMany({
-    where: { userId, completed: true },
-    select: { lessonId: true },
-  });
-  // Ưu tiên bài đang học dở gần nhất, thay vì luôn quay về bài đầu tiên chưa xong.
-  const inProgress = await prisma.lessonProgress.findFirst({
-    where: {
-      userId,
-      completed: false,
-      bestScore: { gt: 0 },
-    },
-    orderBy: { updatedAt: "desc" },
-    include: { lesson: { include: { level: true } } },
-  });
+  // Không query thêm: dùng lại tiến độ đã lấy trong getUserLearningState.
+  const [levels, state] = await Promise.all([
+    getCurriculumLevels(),
+    getUserLearningState(userId),
+  ]);
 
-  if (inProgress) {
-    return {
-      id: inProgress.lesson.id,
-      title: inProgress.lesson.title,
-      track:
-        inProgress.lesson.track === "vocabulary"
-          ? ("vocabulary" as const)
-          : ("grammar" as const),
-      levelCode: inProgress.lesson.level.code as LevelCode,
-      levelName: inProgress.lesson.level.name,
-    };
+  const lessonIndex = new Map<
+    string,
+    { lesson: CurriculumLevels[number]["lessons"][number]; level: CurriculumLevels[number] }
+  >();
+  for (const level of levels) {
+    for (const lesson of level.lessons) lessonIndex.set(lesson.id, { lesson, level });
   }
 
-  const completed = new Set(completedRows.map((row) => row.lessonId));
+  const toContinue = (entry: NonNullable<ReturnType<typeof lessonIndex.get>>) => ({
+    id: entry.lesson.id,
+    title: entry.lesson.title,
+    track: entry.lesson.track === "vocabulary" ? ("vocabulary" as const) : ("grammar" as const),
+    levelCode: entry.level.code as LevelCode,
+    levelName: entry.level.name,
+  });
+
+  // Ưu tiên bài đang học dở gần nhất, thay vì luôn quay về bài đầu tiên chưa xong.
+  const inProgress = state.progressRows
+    .filter((row) => !row.completed && row.bestScore > 0)
+    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
+    .map((row) => lessonIndex.get(row.lessonId))
+    .find(Boolean);
+  if (inProgress) return toContinue(inProgress);
+
+  const completed = new Set(
+    state.progressRows.filter((row) => row.completed).map((row) => row.lessonId),
+  );
 
   for (const level of levels) {
     for (const lesson of level.lessons) {
-      if (completed.has(lesson.id)) continue;
-
-      return {
-        id: lesson.id,
-        title: lesson.title,
-        track: lesson.track === "vocabulary" ? ("vocabulary" as const) : ("grammar" as const),
-        levelCode: level.code as LevelCode,
-        levelName: level.name,
-      };
+      if (!completed.has(lesson.id)) return toContinue({ lesson, level });
     }
   }
 
@@ -448,30 +456,31 @@ export const getContinueLesson = cache(async (userId?: string) => {
 });
 
 export async function getLessonForLearner(lessonId: string, userId?: string) {
-  // Chạy tuần tự: Prisma chỉ có 1 connection nên Promise.all dễ gây timeout.
-  const lesson = await prisma.lesson.findUnique({
-    where: { id: lessonId },
-    include: {
-      level: true,
-      topic: true,
-      sections: { orderBy: { order: "asc" } },
-      vocab: { orderBy: { order: "asc" } },
-      questions: {
-        orderBy: { order: "asc" },
-        include: {
-          choices: {
-            orderBy: { order: "asc" },
-            select: { id: true, label: true, order: true },
+  const [lesson, progress] = await Promise.all([
+    prisma.lesson.findUnique({
+      where: { id: lessonId },
+      include: {
+        level: true,
+        topic: true,
+        sections: { orderBy: { order: "asc" } },
+        vocab: { orderBy: { order: "asc" } },
+        questions: {
+          orderBy: { order: "asc" },
+          include: {
+            choices: {
+              orderBy: { order: "asc" },
+              select: { id: true, label: true, order: true },
+            },
           },
         },
       },
-    },
-  });
-  const progress = userId
-    ? await prisma.lessonProgress.findUnique({
-        where: { userId_lessonId: { userId, lessonId } },
-      })
-    : null;
+    }),
+    userId
+      ? prisma.lessonProgress.findUnique({
+          where: { userId_lessonId: { userId, lessonId } },
+        })
+      : null,
+  ]);
 
   if (!lesson) return null;
 
@@ -594,33 +603,34 @@ export async function getAdminLesson(lessonId: string) {
 }
 
 export async function getTopicDetail(levelCode: string, slug: string, userId?: string) {
-  // Chạy tuần tự: Prisma chỉ có 1 connection nên Promise.all dễ gây timeout.
-  const topic = await prisma.topic.findFirst({
-    where: { slug, level: { code: levelCode } },
-    include: {
-      level: true,
-      lessons: {
-        orderBy: { order: "asc" },
-        include: {
-          _count: { select: { questions: true, vocab: true } },
+  const [topic, progressRows] = await Promise.all([
+    prisma.topic.findFirst({
+      where: { slug, level: { code: levelCode } },
+      include: {
+        level: true,
+        lessons: {
+          orderBy: { order: "asc" },
+          include: {
+            _count: { select: { questions: true, vocab: true } },
+          },
         },
       },
-    },
-  });
-  const progressRows = userId
-    ? await prisma.lessonProgress.findMany({
-        where: {
-          userId,
-          lesson: { topic: { slug, level: { code: levelCode } } },
-        },
-        select: {
-          lessonId: true,
-          completed: true,
-          bestScore: true,
-          quizTotal: true,
-        },
-      })
-    : [];
+    }),
+    userId
+      ? prisma.lessonProgress.findMany({
+          where: {
+            userId,
+            lesson: { topic: { slug, level: { code: levelCode } } },
+          },
+          select: {
+            lessonId: true,
+            completed: true,
+            bestScore: true,
+            quizTotal: true,
+          },
+        })
+      : [],
+  ]);
 
   if (!topic) return null;
 

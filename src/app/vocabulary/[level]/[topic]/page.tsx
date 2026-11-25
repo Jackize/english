@@ -2,24 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { getTopicDetail } from "@/lib/learning";
-import { prisma } from "@/lib/prisma";
 import { LEVEL_META, type LevelCode } from "@/lib/curriculum";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { LessonRow } from "@/components/learning/LessonRow";
 import { ProgressBar } from "@/components/ui/Progress";
-
-export const revalidate = 3600;
-
-export async function generateStaticParams() {
-  const topics = await prisma.topic.findMany({
-    select: { slug: true, level: { select: { code: true } } },
-  });
-  return topics.map((topic) => ({
-    level: topic.level.code.toUpperCase(),
-    topic: topic.slug,
-  }));
-}
 
 export default async function TopicPage({
   params,

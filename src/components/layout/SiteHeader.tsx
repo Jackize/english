@@ -8,9 +8,11 @@ export type { NavKey };
 export async function SiteHeader({ active }: { active?: NavKey }) {
   const session = await getSession();
   const user = session?.user ?? null;
-  // Prisma client chỉ mở 1 connection, nên chạy tuần tự để tránh timeout.
-  const continueLesson = user ? await getContinueLesson(user.id) : null;
-  const stats = user ? await getHeaderStats(user.id) : null;
+  // Cả hai dùng chung getUserLearningState (React cache) với trang, nên không
+  // phát sinh query riêng cho header.
+  const [continueLesson, stats] = user
+    ? await Promise.all([getContinueLesson(user.id), getHeaderStats(user.id)])
+    : [null, null];
 
   return (
     <HeaderBar

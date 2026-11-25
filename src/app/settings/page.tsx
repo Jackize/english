@@ -17,8 +17,10 @@ export default async function SettingsPage() {
   const session = await getSession();
   if (!session?.user?.id) redirect("/login?callbackUrl=/settings");
 
-  const overview = await getOverview(session.user.id);
-  const learnedWords = await getLearnedVocabularyCount(session.user.id);
+  const [overview, learnedWords] = await Promise.all([
+    getOverview(session.user.id),
+    getLearnedVocabularyCount(session.user.id),
+  ]);
   const target = overview.onboarding.targetLevel;
   const placement = overview.onboarding.placementLevel;
 

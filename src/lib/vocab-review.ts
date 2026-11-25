@@ -153,14 +153,21 @@ function addDays(date: Date, days: number) {
  * createMany + skipDuplicates đảm bảo gọi lại nhiều lần không reset mức của
  * những từ đã có lịch sử ôn.
  */
-export async function registerVocabularyForLesson(userId: string, lessonId: string) {
-  const lesson = await prisma.lesson.findUnique({
-    where: { id: lessonId },
-    select: {
-      track: true,
-      vocab: { select: { id: true } },
-    },
-  });
+export async function registerVocabularyForLesson(
+  userId: string,
+  lessonId: string,
+  // Truyền sẵn khi caller đã có dữ liệu bài học, để khỏi query lại.
+  preloaded?: { track: string; vocab: { id: string }[] },
+) {
+  const lesson =
+    preloaded ??
+    (await prisma.lesson.findUnique({
+      where: { id: lessonId },
+      select: {
+        track: true,
+        vocab: { select: { id: true } },
+      },
+    }));
 
   if (!lesson || lesson.track !== "vocabulary" || lesson.vocab.length === 0) {
     return 0;
@@ -250,44 +257,43 @@ export async function getLearnedVocabularyCount(userId: string) {
 export async function getVocabularyReview(userId: string) {
   const dueEnd = endOfToday();
 
-  const dueItems = await prisma.vocabReviewItem.findMany({
-    where: { userId, dueAt: { lt: dueEnd } },
-    orderBy: [{ dueAt: "asc" }, { level: "asc" }],
-    take: 40,
-    include: {
-      vocab: {
-        select: {
-          id: true,
-          word: true,
-          ipa: true,
-          wordForm: true,
-          meaningVi: true,
-          lesson: {
-            select: {
-              id: true,
-              title: true,
-              level: { select: { code: true } },
+  const [dueItems, grouped, dueCount, aggregate] = await Promise.all([
+    prisma.vocabReviewItem.findMany({
+      where: { userId, dueAt: { lt: dueEnd } },
+      orderBy: [{ dueAt: "asc" }, { level: "asc" }],
+      take: 40,
+      include: {
+        vocab: {
+          select: {
+            id: true,
+            word: true,
+            ipa: true,
+            wordForm: true,
+            meaningVi: true,
+            lesson: {
+              select: {
+                id: true,
+                title: true,
+                level: { select: { code: true } },
+              },
             },
           },
         },
       },
-    },
-  });
-
-  const grouped = await prisma.vocabReviewItem.groupBy({
-    by: ["level"],
-    where: { userId },
-    _count: { _all: true },
-  });
-
-  const dueCount = await prisma.vocabReviewItem.count({
-    where: { userId, dueAt: { lt: dueEnd } },
-  });
-
-  const aggregate = await prisma.vocabReviewItem.aggregate({
-    where: { userId },
-    _min: { dueAt: true },
-  });
+    }),
+    prisma.vocabReviewItem.groupBy({
+      by: ["level"],
+      where: { userId },
+      _count: { _all: true },
+    }),
+    prisma.vocabReviewItem.count({
+      where: { userId, dueAt: { lt: dueEnd } },
+    }),
+    prisma.vocabReviewItem.aggregate({
+      where: { userId },
+      _min: { dueAt: true },
+    }),
+  ]);
 
   const counts: Record<VocabReviewLevel, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
   let total = 0;
@@ -402,18 +408,19 @@ export async function answerVocabularyReview(
   const dueAt = correct ? addDays(now, intervalDays) : now;
   const meta = VOCAB_REVIEW_LEVELS[level - 1];
 
-  await prisma.vocabReviewItem.update({
-    where: { id: item.id },
-    data: {
-      level,
-      correctStreak: correct ? { increment: 1 } : 0,
-      wrongCount: correct ? undefined : { increment: 1 },
-      lastReviewedAt: now,
-      dueAt,
-    },
-  });
-
-  if (correct) await touchStreak(userId);
+  await Promise.all([
+    prisma.vocabReviewItem.update({
+      where: { id: item.id },
+      data: {
+        level,
+        correctStreak: correct ? { increment: 1 } : 0,
+        wrongCount: correct ? undefined : { increment: 1 },
+        lastReviewedAt: now,
+        dueAt,
+      },
+    }),
+    correct ? touchStreak(userId) : null,
+  ]);
 
   return {
     correct,

@@ -27,6 +27,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
+# Ranh giới "hôm nay" (streak, mục tiêu ngày, lịch ôn) tính theo giờ Việt Nam.
+# Node có sẵn dữ liệu múi giờ (ICU) nên không cần cài tzdata.
+ENV TZ=Asia/Ho_Chi_Minh
 
 # Chỉ copy output standalone + static assets + public
 COPY --from=build /app/.next/standalone ./

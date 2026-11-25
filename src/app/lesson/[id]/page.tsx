@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { getLessonForLearner } from "@/lib/learning";
-import { prisma } from "@/lib/prisma";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import dynamic from "next/dynamic";
@@ -16,13 +15,6 @@ const LessonExperience = dynamic(
     ),
   },
 );
-
-export const revalidate = 3600;
-
-export async function generateStaticParams() {
-  const lessons = await prisma.lesson.findMany({ select: { id: true } });
-  return lessons.map((lesson) => ({ id: lesson.id }));
-}
 
 export default async function LessonPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();

@@ -1,31 +1,44 @@
 # ============================================================
-# docker-compose trên VPS (đặt tại ${VPS_DEPLOY_PATH}/docker-compose.yml)
+# docker-compose trên VPS: ~/apps/evapp/docker-compose.yml
+# (thư mục = secret VPS_DEPLOY_PATH)
 #
-# File này là MẪU. Gộp 3 phần dưới đây vào file docker-compose.yml đang có
-# trên VPS — GIỮ NGUYÊN labels / networks của Traefik ở service "web".
-#
-# Cấu trúc thư mục trên VPS:
-#   ${VPS_DEPLOY_PATH}/
-#     docker-compose.yml
-#     app.env      ← GitHub Actions ghi (DATABASE_URL, AUTH_SECRET, ...)
-#     db.env       ← GitHub Actions ghi (POSTGRES_USER/DB/PASSWORD)
-#     repo/        ← source được rsync lên
-#     backups/     ← file backup của scripts/vps/backup-db.sh
+#   ~/apps/evapp/
+#     docker-compose.yml   ← file này
+#     app.env              ← GitHub Actions ghi (DATABASE_URL, AUTH_SECRET, ...)
+#     db.env               ← GitHub Actions ghi (POSTGRES_USER/DB/PASSWORD)
+#     .env                 ← cấu hình cũ (Supabase), giữ lại để rollback
+#     repo/                ← source được rsync lên
+#     backups/             ← backup của scripts/vps/backup-db.sh
 # ============================================================
 services:
   web:
     build:
       context: ./repo
-      # Không còn cần BuildKit secret "database_url": build không kết nối DB.
+      dockerfile: Dockerfile
     container_name: english-vocab-app
     restart: unless-stopped
     env_file: ./app.env
     depends_on:
       db:
         condition: service_healthy
-    # labels: ...      ← giữ nguyên cấu hình Traefik hiện tại
-    # networks: ...    ← giữ nguyên network của Traefik, và thêm "default"
-    #                    để web nói chuyện được với db (xem cuối file)
+    networks:
+      - proxy     # Traefik
+      - default   # nói chuyện với db
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      # HTTP -> redirect HTTPS
+      - traefik.http.routers.english-http.rule=Host(`english.sanbong.cloud`)
+      - traefik.http.routers.english-http.entrypoints=web
+      - traefik.http.routers.english-http.middlewares=english-redirect-https
+      - traefik.http.middlewares.english-redirect-https.redirectscheme.scheme=https
+      - traefik.http.middlewares.english-redirect-https.redirectscheme.permanent=true
+      # HTTPS
+      - traefik.http.routers.english.rule=Host(`english.sanbong.cloud`)
+      - traefik.http.routers.english.entrypoints=websecure
+      - traefik.http.routers.english.tls=true
+      - traefik.http.routers.english.tls.certresolver=letsencrypt
+      - traefik.http.services.english.loadbalancer.server.port=3000
 
   db:
     image: postgres:17-alpine
@@ -35,34 +48,35 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     shm_size: 256mb
+    networks:
+      - default
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 3s
       retries: 30
-    # KHÔNG khai báo "ports:" — DB chỉ truy cập được từ các container cùng
-    # network, không lộ ra internet.
+    # KHÔNG có "ports:" → DB không lộ ra internet, chỉ container cùng network
+    # "default" truy cập được.
 
-  # Container chạy một lần để áp dụng migration (Prisma CLI có sẵn ở stage build).
-  # Chạy: docker compose --profile tools run --rm migrate
+  # Chạy một lần để áp dụng migration (Prisma CLI có sẵn ở stage build).
+  # docker compose --profile tools run --rm migrate
   migrate:
     build:
       context: ./repo
+      dockerfile: Dockerfile
       target: build
     profiles: ["tools"]
     env_file: ./app.env
     command: ["npx", "prisma", "migrate", "deploy"]
+    networks:
+      - default
     depends_on:
       db:
         condition: service_healthy
 
+networks:
+  proxy:
+    external: true
+
 volumes:
   pgdata:
-
-# Nếu service "web" đang khai báo networks riêng cho Traefik, ví dụ:
-#   web:
-#     networks: [traefik]
-# thì đổi thành:
-#   web:
-#     networks: [traefik, default]
-# (db và migrate không khai báo networks nên tự nằm trong "default").

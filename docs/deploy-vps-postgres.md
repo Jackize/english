@@ -31,14 +31,14 @@ cd $DEPLOY
 cp docker-compose.yml docker-compose.yml.bak      # để rollback
 ```
 
-1. **Sửa `docker-compose.yml`** theo mẫu `deploy/docker-compose.example.yml`:
-   - thêm service `db` và `migrate`, volume `pgdata`
-   - service `web`: thêm `env_file: ./app.env` và `depends_on: db`;
-     **giữ nguyên labels/networks Traefik**, thêm network `default` nếu web
-     đang khai báo networks riêng
-   - bỏ phần `secrets: database_url` ở build của web (không còn dùng)
-   - nếu web đang lấy `DATABASE_URL`/`AUTH_SECRET` từ `environment:` hoặc file
-     khác thì bỏ đi — từ giờ lấy từ `app.env` (GitHub Actions tự ghi)
+1. **Thay `docker-compose.yml`** bằng nội dung `deploy/docker-compose.example.yml`
+   (đã gộp sẵn Traefik hiện tại + service `db`, `migrate`; bỏ build secret
+   `database_url`). Thư mục `secrets/` không còn dùng, xoá sau khi ổn định.
+   Tạo `app.env` tạm bằng cấu hình cũ (để compose hợp lệ; web vẫn dùng Supabase
+   cho tới Bước 3, lúc đó workflow sẽ ghi đè):
+   ```bash
+   cp .env app.env
+   ```
 2. **Tạo `db.env`** — mật khẩu PHẢI giống hệt secret `POSTGRES_PASSWORD`
    (Postgres chỉ đặt mật khẩu ở lần khởi tạo đầu tiên):
    ```bash
@@ -63,7 +63,9 @@ cp docker-compose.yml docker-compose.yml.bak      # để rollback
 ```bash
 cd $DEPLOY
 docker compose stop web                      # dừng ghi vào Supabase
-./repo/scripts/vps/migrate-from-supabase.sh '<chuỗi Supabase ở Bước 0.4>'
+# Lấy DIRECT_URL (Supabase) từ file .env cũ, khỏi phải gõ mật khẩu:
+SUPABASE_URL="$(grep '^DIRECT_URL=' .env | cut -d= -f2- | tr -d '"')"
+./repo/scripts/vps/migrate-from-supabase.sh "$SUPABASE_URL"
 ```
 
 Script dump Supabase → restore vào `db` → in bảng so sánh số dòng từng bảng.
@@ -111,6 +113,7 @@ secret `DATABASE_URL`, `DIRECT_URL` trên GitHub.
 cd $DEPLOY
 cp docker-compose.yml.bak docker-compose.yml
 ```
+
 Rồi chạy lại Deploy `production` từ commit cũ (trước giai đoạn 2), hoặc
 `docker compose up -d web` nếu image cũ còn. Supabase vẫn nguyên dữ liệu tại
 thời điểm dừng web ở Bước 2 (dữ liệu ghi vào DB mới sau đó sẽ không có ở Supabase).

@@ -1,8 +1,15 @@
 # ============================================================
 # CD — deploy lên VPS qua SSH (rsync + docker compose).
 # Chỉ chạy khi bấm tay: Actions → tab "Deploy" → "Run workflow".
-# - Chọn job: "migrate" (chạy prisma migrate deploy) hoặc
-#   "production" (deploy app lên VPS) — KHÔNG tự chạy khi push.
+#
+# Postgres chạy ngay trên VPS (service "db" trong docker-compose, không mở
+# port ra ngoài), nên mọi thao tác với DB đều chạy trên VPS:
+# - "production": đồng bộ code → ghi file env → build image →
+#   chạy `prisma migrate deploy` (an toàn khi chạy lại) → khởi động lại web.
+# - "migrate": chỉ chạy migration (khi cần chạy riêng, không deploy code).
+#
+# Secrets cần có: VPS_HOST, VPS_DEPLOY_PATH, VPS_DEPLOY_KEY,
+#                 AUTH_SECRET, NEXTAUTH_URL, POSTGRES_PASSWORD
 # ============================================================
 name: Deploy
 
@@ -15,35 +22,23 @@ on:
         type: choice
         default: production
         options:
-          - migrate
           - production
+          - migrate
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  VPS_HOST: ${{ secrets.VPS_HOST }}
+  VPS_DEPLOY_PATH: ${{ secrets.VPS_DEPLOY_PATH }}
+  SSH_OPTS: -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no
 
 jobs:
   migrate:
-    name: Migrate database
+    name: Migrate database (trên VPS)
     if: github.event.inputs.job == 'migrate'
     runs-on: ubuntu-latest
-    env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      DIRECT_URL: ${{ secrets.DIRECT_URL }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - run: npm ci
-      - run: npx prisma migrate deploy
-
-  production:
-    name: Deploy production
-    if: github.event.inputs.job == 'production'
-    runs-on: ubuntu-latest
-    env:
-      VPS_HOST: ${{ secrets.VPS_HOST }}
-      VPS_DEPLOY_PATH: ${{ secrets.VPS_DEPLOY_PATH }}
     steps:
       - uses: actions/checkout@v4
 
@@ -60,20 +55,80 @@ jobs:
             --exclude node_modules --exclude .next --exclude .git \
             --exclude .env --exclude "*.db" --exclude .DS_Store \
             --exclude mockups --exclude .github \
-            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            -e "ssh $SSH_OPTS" \
             ./ "root@${VPS_HOST}:${VPS_DEPLOY_PATH}/repo/"
 
-      - name: Update DATABASE_URL secret on VPS
+      - name: Run prisma migrate deploy
         run: |
-          echo -n "${{ secrets.DATABASE_URL }}" | \
-            ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            "root@${VPS_HOST}" \
-            "cat > ${VPS_DEPLOY_PATH}/secrets/database_url && chmod 600 ${VPS_DEPLOY_PATH}/secrets/database_url"
+          ssh $SSH_OPTS "root@${VPS_HOST}" \
+            "cd ${VPS_DEPLOY_PATH} && docker compose --profile tools build migrate && docker compose up -d db && docker compose --profile tools run --rm migrate"
 
-      - name: Build image & restart container
+  production:
+    name: Deploy production
+    if: github.event.inputs.job == 'production'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup SSH
         run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "root@${VPS_HOST}" \
-            "cd ${VPS_DEPLOY_PATH} && docker compose build web && docker compose up -d && docker ps --filter name=english-vocab-app --format '{{.Status}}'"
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          echo "${{ secrets.VPS_DEPLOY_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+
+      - name: Sync source to VPS
+        run: |
+          rsync -a --delete \
+            --exclude node_modules --exclude .next --exclude .git \
+            --exclude .env --exclude "*.db" --exclude .DS_Store \
+            --exclude mockups --exclude .github \
+            -e "ssh $SSH_OPTS" \
+            ./ "root@${VPS_HOST}:${VPS_DEPLOY_PATH}/repo/"
+
+      # Sinh app.env (cho web + migrate) và db.env (cho Postgres) từ GitHub
+      # Secrets, rồi chép lên VPS với quyền 600. Không in giá trị ra log.
+      - name: Write env files on VPS
+        env:
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in AUTH_SECRET NEXTAUTH_URL POSTGRES_PASSWORD; do
+            if [ -z "${!name}" ]; then echo "::error::Thiếu secret $name"; exit 1; fi
+          done
+          # Mật khẩu nằm trong URL và file env của compose: chỉ cho phép chữ + số
+          # để không phải escape (tạo bằng: openssl rand -hex 24).
+          if ! [[ "$POSTGRES_PASSWORD" =~ ^[A-Za-z0-9]{16,}$ ]]; then
+            echo "::error::POSTGRES_PASSWORD phải gồm ít nhất 16 ký tự chữ/số (gợi ý: openssl rand -hex 24)"
+            exit 1
+          fi
+          umask 077
+          mkdir -p envout
+          {
+            echo "DATABASE_URL=postgresql://app:${POSTGRES_PASSWORD}@db:5432/eng_growth?sslmode=disable"
+            echo "AUTH_SECRET=${AUTH_SECRET}"
+            echo "NEXTAUTH_URL=${NEXTAUTH_URL}"
+            echo "DB_POOL_MAX=10"
+          } > envout/app.env
+          {
+            echo "POSTGRES_USER=app"
+            echo "POSTGRES_DB=eng_growth"
+            echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
+          } > envout/db.env
+          rsync -a --chmod=F600 -e "ssh $SSH_OPTS" envout/app.env envout/db.env \
+            "root@${VPS_HOST}:${VPS_DEPLOY_PATH}/"
+          rm -rf envout
+
+      - name: Build image, migrate & restart
+        run: |
+          ssh $SSH_OPTS "root@${VPS_HOST}" "set -e; cd ${VPS_DEPLOY_PATH}
+            docker compose --profile tools build web migrate
+            docker compose up -d db
+            docker compose --profile tools run --rm migrate
+            docker compose up -d web
+            docker ps --filter name=english-vocab --format '{{.Names}}: {{.Status}}'"
 
       - name: Warm-up
         run: |

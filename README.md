@@ -94,8 +94,10 @@ Repository đã chuyển sang GitHub: `https://github.com/Jackize/english.git`.
 
 ### Quy trình
 
-- **CI** (`.github/workflows/ci.yml`) — tự chạy mỗi khi `push` / mở PR lên `main`: `lint` + `typecheck` + `build`.
+- **CI** (`.github/workflows/ci.yml`) — tự chạy mỗi khi `push` / mở PR lên `main`: `lint` + `typecheck` + `build`. Build không cần DB hay secret.
 - **CD** (`.github/workflows/deploy.yml`) — **chỉ chạy khi bấm tay**, không tự deploy khi push.
+
+Database: PostgreSQL chạy ngay trên VPS (service `db` trong docker-compose, không mở port ra ngoài). Hướng dẫn chuyển từ Supabase, backup và khôi phục: [`docs/deploy-vps-postgres.md`](docs/deploy-vps-postgres.md). Mẫu compose: [`deploy/docker-compose.example.yml`](deploy/docker-compose.example.yml).
 
 ### Deploy (bấm tay)
 
@@ -103,8 +105,10 @@ Vào GitHub → tab **Actions** → chọn workflow **Deploy** → **Run workflo
 
 | Job | Mô tả |
 | --- | --- |
-| `migrate` | Chạy `prisma migrate deploy` lên database (Supabase). Chỉ cần khi có migration mới. |
-| `production` | Đồng bộ source lên VPS (rsync) → `docker compose build` → restart container → warm-up. |
+| `production` | Đồng bộ source lên VPS → ghi `app.env`/`db.env` → `docker compose build` → `prisma migrate deploy` trên VPS → restart web → warm-up. |
+| `migrate` | Chỉ chạy `prisma migrate deploy` trên VPS (không deploy code mới). |
+
+Migration tự chạy mỗi lần deploy `production`, không cần vào VPS chạy tay.
 
 ### Secrets cần cấu hình trên GitHub
 
@@ -112,12 +116,11 @@ Vào **Settings → Secrets and variables → Actions → New repository secret*
 
 | Secret | Mô tả |
 | --- | --- |
-| `DATABASE_URL` | Chuỗi kết nối PostgreSQL (transaction pooler, port `6543`) |
-| `DIRECT_URL` | Chuỗi kết nối session pooler (port `5432`, dùng cho migrate) |
+| `POSTGRES_PASSWORD` | Mật khẩu Postgres trên VPS, chỉ chữ + số (tạo bằng `openssl rand -hex 24`) |
 | `AUTH_SECRET` | Secret cho NextAuth |
 | `NEXTAUTH_URL` | URL public của app (ví dụ `https://english.sanbong.cloud`) |
 | `VPS_HOST` | Địa chỉ/domain của VPS deploy |
 | `VPS_DEPLOY_PATH` | Đường dẫn thư mục deploy trên VPS |
 | `VPS_DEPLOY_KEY` | Private SSH key (đã được thêm vào `authorized_keys` trên VPS) |
 
-> Các giá trị giữ nguyên như cấu hình GitLab cũ (đổi nơi lưu: GitLab CI Variables → GitHub Actions Secrets).
+`DATABASE_URL` được workflow tự tạo từ `POSTGRES_PASSWORD` (trỏ tới service `db`), không cần secret riêng.

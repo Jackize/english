@@ -1,0 +1,68 @@
+# ============================================================
+# docker-compose trên VPS (đặt tại ${VPS_DEPLOY_PATH}/docker-compose.yml)
+#
+# File này là MẪU. Gộp 3 phần dưới đây vào file docker-compose.yml đang có
+# trên VPS — GIỮ NGUYÊN labels / networks của Traefik ở service "web".
+#
+# Cấu trúc thư mục trên VPS:
+#   ${VPS_DEPLOY_PATH}/
+#     docker-compose.yml
+#     app.env      ← GitHub Actions ghi (DATABASE_URL, AUTH_SECRET, ...)
+#     db.env       ← GitHub Actions ghi (POSTGRES_USER/DB/PASSWORD)
+#     repo/        ← source được rsync lên
+#     backups/     ← file backup của scripts/vps/backup-db.sh
+# ============================================================
+services:
+  web:
+    build:
+      context: ./repo
+      # Không còn cần BuildKit secret "database_url": build không kết nối DB.
+    container_name: english-vocab-app
+    restart: unless-stopped
+    env_file: ./app.env
+    depends_on:
+      db:
+        condition: service_healthy
+    # labels: ...      ← giữ nguyên cấu hình Traefik hiện tại
+    # networks: ...    ← giữ nguyên network của Traefik, và thêm "default"
+    #                    để web nói chuyện được với db (xem cuối file)
+
+  db:
+    image: postgres:17-alpine
+    container_name: english-vocab-db
+    restart: unless-stopped
+    env_file: ./db.env
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    shm_size: 256mb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    # KHÔNG khai báo "ports:" — DB chỉ truy cập được từ các container cùng
+    # network, không lộ ra internet.
+
+  # Container chạy một lần để áp dụng migration (Prisma CLI có sẵn ở stage build).
+  # Chạy: docker compose --profile tools run --rm migrate
+  migrate:
+    build:
+      context: ./repo
+      target: build
+    profiles: ["tools"]
+    env_file: ./app.env
+    command: ["npx", "prisma", "migrate", "deploy"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+
+# Nếu service "web" đang khai báo networks riêng cho Traefik, ví dụ:
+#   web:
+#     networks: [traefik]
+# thì đổi thành:
+#   web:
+#     networks: [traefik, default]
+# (db và migrate không khai báo networks nên tự nằm trong "default").

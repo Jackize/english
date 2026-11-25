@@ -5,6 +5,15 @@ const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
 
+function isInternalHost(url: string) {
+  try {
+    const host = new URL(url).hostname;
+    return host === "localhost" || host === "127.0.0.1" || !host.includes(".");
+  } catch {
+    return false;
+  }
+}
+
 function getConnectionString() {
   const url = process.env.DATABASE_URL;
   if (!url) {
@@ -16,9 +25,10 @@ function getConnectionString() {
     );
   }
 
-  // Supabase yêu cầu SSL. Tự bổ sung nếu chuỗi kết nối chưa khai báo.
-  const isLocal = /localhost|127\.0\.0\.1/.test(url);
-  if (isLocal || /[?&]sslmode=/.test(url)) return url;
+  // DB ngoài internet (Supabase) cần SSL: tự bổ sung nếu chuỗi kết nối chưa
+  // khai báo. DB nội bộ (localhost hoặc tên service Docker như "db", không có
+  // dấu chấm) không bật SSL nên giữ nguyên.
+  if (/[?&]sslmode=/.test(url) || isInternalHost(url)) return url;
 
   return `${url}${url.includes("?") ? "&" : "?"}sslmode=require`;
 }

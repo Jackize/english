@@ -38,11 +38,8 @@ jobs:
   build:
     name: Build production
     runs-on: ubuntu-latest
-    env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      DIRECT_URL: ${{ secrets.DIRECT_URL }}
-      AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
-      NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+    # Build không cần DB hay secret: mọi trang render động, Prisma chỉ kết nối
+    # khi có query lúc chạy. (DB nằm trên VPS, GitHub runner không kết nối được.)
     steps:
       - uses: actions/checkout@v4
 
@@ -52,5 +49,4 @@ jobs:
           cache: npm
 
       - run: npm ci
-      # Build cần DATABASE_URL để Next.js prerender page data (Prisma init lúc import)
       - run: npm run build

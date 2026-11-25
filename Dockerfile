@@ -17,9 +17,10 @@ RUN npm ci
 
 # Copy source và build production
 COPY . .
-# Build cần DATABASE_URL để Next thu thập page data (Prisma khởi tạo lúc import)
-# Truyền qua BuildKit secret → không lưu trong image/history
-RUN --mount=type=secret,id=database_url,env=DATABASE_URL npm run build
+# Build không cần kết nối DB (mọi trang render động, Prisma chỉ kết nối khi có
+# query). Stage này cũng được dùng làm image chạy `prisma migrate deploy`
+# (service "migrate" trong docker-compose) vì có sẵn Prisma CLI + migrations.
+RUN npm run build
 
 # ---------- Stage 2: Runtime ----------
 FROM node:22-slim

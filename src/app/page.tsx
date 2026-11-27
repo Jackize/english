@@ -1,5 +1,6 @@
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
+import { GuestGrowthHome } from "@/components/home/GuestGrowthHome";
 import { DailyGoalCard } from "@/components/learning/DailyGoalCard";
 import { DailyTaskRow } from "@/components/learning/DailyTaskRow";
 import { PlantGrowth } from "@/components/learning/PlantGrowth";
@@ -9,7 +10,7 @@ import { LevelBadge, ProgressBar } from "@/components/ui/Progress";
 import { getSession } from "@/lib/auth";
 import { LEVEL_META, TRACK_META } from "@/lib/curriculum";
 import { getDailyPlan } from "@/lib/daily-plan";
-import { getOverview } from "@/lib/learning";
+import { getHomeShowcase, getOverview } from "@/lib/learning";
 import { getHomeMotivation } from "@/lib/motivation";
 import Link from "next/link";
 
@@ -39,6 +40,24 @@ export default async function HomePage() {
       ),
     0,
   );
+
+  if (isGuest) {
+    const showcase = await getHomeShowcase();
+    return (
+      <GuestGrowthHome
+        showcase={showcase}
+        levels={overview.levels.map((level) => ({
+          code: level.code,
+          name: level.name,
+          grammar: level.grammar.total,
+          vocabulary: level.vocabulary.total,
+        }))}
+        totalLessons={overview.totalLessons}
+        totalQuestions={totalQuestions}
+      />
+    );
+  }
+
   const continueHref = next
     ? `/lesson/${next.id}`
     : dailyPlan && currentDay
@@ -50,7 +69,6 @@ export default async function HomePage() {
       <SiteHeader active="home" />
 
       <main className="flex-1 pb-6">
-        {session?.user ? (
           <>
             {/* Greeting */}
             <section className={`${container} pt-10 md:pt-14`}>
@@ -249,116 +267,9 @@ export default async function HomePage() {
               </section>
             ) : null}
           </>
-        ) : (
-          /* Guest hero */
-          <section
-            className={`${container} grid items-center gap-12 pb-4 pt-12 md:pt-20 lg:grid-cols-[1.05fr_1fr] lg:gap-16`}
-          >
-            <div>
-              <h1 className="display text-[40px] text-ink sm:text-[52px] md:text-[60px] lg:text-[64px]">
-                Học theo từng chặng,{" "}
-                <span className="display-accent">nhớ theo từng bài.</span>
-              </h1>
 
-              <p className="mt-6 max-w-xl text-base leading-relaxed text-muted md:text-lg">
-                Lộ trình IELTS từ A1 đến C2. Ngữ pháp và từ vựng nằm trong hai lộ trình riêng. Mục tiêu hôm
-                nay chia nhỏ lộ trình thành buổi học ngắn, và câu trả lời chưa
-                đúng được lưu lại để ôn tập.
-              </p>
-
-              <div className="mt-9 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-                <Link
-                  href="/register"
-                  className="btn-primary inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-sm font-semibold text-white"
-                >
-                  Bắt đầu học miễn phí
-                  <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
-                    arrow_forward
-                  </span>
-                </Link>
-                <Link
-                  href="/login"
-                  className="link-underline px-1 text-sm font-semibold text-ink"
-                >
-                  Đã có tài khoản? Đăng nhập
-                </Link>
-              </div>
-
-              <dl className="mt-12 grid max-w-lg grid-cols-3 gap-6 border-t border-line pt-7">
-                <div>
-                  <dt className="text-xs text-muted">Cấp độ CEFR</dt>
-                  <dd className="display mt-1 text-3xl text-ink">
-                    {overview.levels.length}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-muted">Bài học</dt>
-                  <dd className="display mt-1 text-3xl text-ink">
-                    {overview.totalLessons}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-muted">Câu hỏi</dt>
-                  <dd className="display mt-1 text-3xl text-ink">
-                    {totalQuestions}
-                  </dd>
-                </div>
-              </dl>
-            </div>
-
-            {/* Lesson preview */}
-            <div aria-hidden="true" className="relative">
-              <div className="absolute -inset-5 -z-10 rounded-[2.25rem] bg-brand-soft/70" />
-              <div className="card-elevated space-y-6 p-6 md:p-7">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="rounded-md bg-brand-soft px-2 py-0.5 text-[11px] font-bold text-brand">
-                      A1
-                    </span>
-                    <span className="rounded-md bg-surface-muted px-2 py-0.5 text-[11px] font-semibold text-muted">
-                      Ngữ pháp
-                    </span>
-                  </div>
-                  <span className="text-xs font-semibold text-muted">
-                    Câu 3 / 10
-                  </span>
-                </div>
-                <ProgressBar value={30} />
-                <div>
-                  <div className="eyebrow !text-muted">Quá khứ đơn</div>
-                  <p className="display mt-3 text-[26px] leading-snug text-ink">
-                    Yesterday, she ____ to the market with her mother.
-                  </p>
-                </div>
-                <div className="grid gap-2.5">
-                  <div className="flex items-center justify-between rounded-2xl border border-brand bg-brand-soft px-4 py-3.5 text-sm font-semibold text-brand">
-                    went
-                    <span className="material-symbols-outlined text-[20px]" aria-hidden="true">
-                      check_circle
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between rounded-2xl border border-line px-4 py-3.5 text-sm font-medium text-muted">
-                    goes
-                  </div>
-                  <div className="flex items-center justify-between rounded-2xl border border-line px-4 py-3.5 text-sm font-medium text-muted">
-                    going
-                  </div>
-                </div>
-                <p className="flex items-center gap-1.5 border-t border-line pt-4 text-xs text-muted">
-                  <span className="material-symbols-outlined text-[16px] text-brand" aria-hidden="true">
-                    history
-                  </span>
-                  Câu trả lời sai sẽ được đưa vào lịch ôn tập.
-                </p>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* Plant: tiến độ cá nhân, khách chưa có nên không hiển thị 0%. */}
-
-        {!isGuest ? (
-          <section className={`${container} mt-16 md:mt-20`}>
+        {/* Plant: tiến độ cá nhân của người học. */}
+        <section className={`${container} mt-16 md:mt-20`}>
           <div className="card p-6 md:p-10">
             <PlantGrowth
               stage={overview.plant.current}
@@ -367,7 +278,6 @@ export default async function HomePage() {
             />
           </div>
         </section>
-        ) : null}
 
         {/* Tracks */}
         <section className={`${container} mt-16 md:mt-20`}>
@@ -427,8 +337,7 @@ export default async function HomePage() {
                     </p>
                   </div>
                   <div className="mt-8">
-                    {!isGuest ? (
-                      <>
+                    <>
                         <div className="mb-2.5 flex items-center justify-between text-xs">
                       <span className="font-semibold text-ink">
                         {count.completed}/{count.total} bài đã hoàn thành
@@ -438,9 +347,8 @@ export default async function HomePage() {
                       </span>
                     </div>
                     <ProgressBar value={percent} />
-                      </>
-                    ) : null}
-                    <div className={`${isGuest ? "" : "mt-5 "}text-sm font-semibold text-brand group-hover:underline`}>
+                    </>
+                    <div className={`mt-5 text-sm font-semibold text-brand group-hover:underline`}>
                       {track === "grammar" ? "Học ngữ pháp" : "Học từ vựng"}
                     </div>
                   </div>
@@ -478,66 +386,23 @@ export default async function HomePage() {
                     >
                       {level.code}
                     </span>
-                    {!isGuest ? (
-                      <span className="text-[11px] font-semibold text-muted">
-                        {percent}%
-                      </span>
-                    ) : null}
+                    <span className="text-[11px] font-semibold text-muted">
+                      {percent}%
+                    </span>
                   </div>
                   <div className="mt-2 text-sm font-semibold text-ink">
                     {level.name}
                   </div>
                   <div className="mt-0.5 text-[11px] text-muted">
-                    {isGuest ? `${level.total} bài` : `${level.completed}/${level.total} bài`}
+                    {`${level.completed}/${level.total} bài`}
                   </div>
-                  {!isGuest ? <ProgressBar value={percent} className="mt-4 h-1" /> : null}
+                  <ProgressBar value={percent} className="mt-4 h-1" />
                 </Link>
               );
             })}
           </div>
         </section>
 
-        {/* Lời mời cuối trang chỉ dành cho khách: người đã đăng nhập không cần thêm một khối nhắc lại. */}
-
-        {isGuest ? (
-
-          <section className={`${container} mt-16 md:mt-20`}>
-
-            <div className="flex flex-col gap-6 rounded-[1.75rem] bg-brand px-6 py-10 text-white md:flex-row md:items-center md:justify-between md:px-12 md:py-12">
-
-              <div>
-
-                <h2 className="display max-w-xl text-[28px] text-white md:text-[34px]">
-
-                  Mỗi ngày một bài, cây lớn dần theo tiến độ.
-
-                </h2>
-
-                <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/75 md:text-base">
-
-                  Câu trả lời sai được ghi lại và đưa vào mục ôn tập, bạn không phải nhớ mình đã sai ở đâu.
-
-                </p>
-
-              </div>
-
-              <Link
-
-                href="/register"
-
-                className="inline-flex min-h-11 w-fit flex-shrink-0 items-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-brand transition-colors hover:bg-mint-soft"
-
-              >
-
-                Tạo tài khoản miễn phí
-
-              </Link>
-
-            </div>
-
-          </section>
-
-        ) : null}
       </main>
 
       <SiteFooter />

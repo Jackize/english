@@ -664,3 +664,68 @@ export async function getLevelsWithTopics() {
     include: { topics: { orderBy: { order: "asc" } } },
   });
 }
+
+export interface HomeShowcase {
+  question: {
+    lessonTitle: string;
+    prompt: string;
+    explanation: string | null;
+    choices: { id: string; label: string; isCorrect: boolean }[];
+  } | null;
+  words: string[];
+}
+
+// Nội dung thật cho trang chủ của khách: một câu ngữ pháp A1 để thử ngay trên
+// trang, và vài từ A1 để minh hoạ chuyện "học rồi quên". Ưu tiên câu có đáp án là
+// cả một câu (dễ sai vì dịch từ tiếng Việt), không có thì lấy câu đầu tiên.
+export const getHomeShowcase = cache(async (): Promise<HomeShowcase> => {
+  const [lesson, vocab] = await Promise.all([
+    prisma.lesson.findFirst({
+      where: { track: "grammar", level: { code: "A1" }, questions: { some: {} } },
+      orderBy: { order: "asc" },
+      select: {
+        title: true,
+        questions: {
+          orderBy: { order: "asc" },
+          select: {
+            prompt: true,
+            explanation: true,
+            choices: {
+              orderBy: { order: "asc" },
+              select: { id: true, label: true, isCorrect: true },
+            },
+          },
+        },
+      },
+    }),
+    prisma.vocabEntry.findMany({
+      where: { lesson: { track: "vocabulary", level: { code: "A1" } } },
+      orderBy: [{ lesson: { order: "asc" } }, { order: "asc" }],
+      take: 5,
+      select: { word: true },
+    }),
+  ]);
+
+  const usable = (lesson?.questions ?? []).filter(
+    (question) =>
+      question.choices.length >= 2 &&
+      question.choices.filter((choice) => choice.isCorrect).length === 1,
+  );
+  const picked =
+    usable.find((question) => question.choices.every((choice) => choice.label.length > 12)) ??
+    usable[0] ??
+    null;
+
+  return {
+    question:
+      lesson && picked
+        ? {
+            lessonTitle: lesson.title,
+            prompt: picked.prompt,
+            explanation: picked.explanation,
+            choices: picked.choices,
+          }
+        : null,
+    words: vocab.map((entry) => entry.word),
+  };
+});

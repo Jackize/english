@@ -1,25 +1,16 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireUser, toErrorResponse } from "@/lib/http";
 import { completeVocabLesson } from "@/lib/progress";
 
-export async function POST(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireUser();
+  if (!guard.ok) return guard.response;
 
   const { id } = await params;
 
   try {
-    const result = await completeVocabLesson(session.user.id, id);
-    return NextResponse.json(result);
+    return NextResponse.json(await completeVocabLesson(guard.value.id, id));
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Complete failed" },
-      { status: 400 },
-    );
+    return toErrorResponse(error, "Complete failed");
   }
 }

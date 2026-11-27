@@ -1,24 +1,21 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { z } from "zod";
+import { readJson, requireUser, toErrorResponse } from "@/lib/http";
 import { answerReviewItem } from "@/lib/progress";
 
+const schema = z.object({
+  itemId: z.string().min(1),
+  choiceId: z.string().min(1),
+});
+
 export async function POST(request: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const guard = await requireUser();
+  if (!guard.ok) return guard.response;
 
   try {
-    const body = (await request.json()) as { itemId?: string; choiceId?: string };
-    if (!body.itemId || !body.choiceId) {
-      return NextResponse.json({ error: "Missing itemId or choiceId" }, { status: 400 });
-    }
-    const result = await answerReviewItem(session.user.id, body.itemId, body.choiceId);
-    return NextResponse.json(result);
+    const body = await readJson(request, schema, "Missing itemId or choiceId");
+    return NextResponse.json(await answerReviewItem(guard.value.id, body.itemId, body.choiceId));
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Review failed" },
-      { status: 400 },
-    );
+    return toErrorResponse(error, "Review failed");
   }
 }

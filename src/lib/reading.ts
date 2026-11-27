@@ -1,7 +1,7 @@
 import { cache } from "react";
 import type { LevelCode } from "./curriculum";
 import { prisma } from "./prisma";
-import type { ReadingQuestion, ReadingUnit } from "./reading-types";
+import type { ReadingQuestion, ReadingUnit, ReadingUnitSummary } from "./reading-types";
 
 // ---------------------------------------------------------------------------
 // Reading loader: nội dung được seed vào Prisma từ scripts/a1-reading.ts.
@@ -39,7 +39,26 @@ async function findReadingUnits(where?: {
 type ReadingUnitRecord = Awaited<ReturnType<typeof findReadingUnits>>[number];
 type ReadingQuestionRecord = ReadingUnitRecord["groups"][number]["questions"][number];
 
+/**
+ * Câu hỏi mà toReadingQuestion() hiển thị được. Dùng chung cho trang chi tiết
+ * và bộ đếm của trang danh sách để hai nơi luôn ra cùng một số câu.
+ */
+function isRenderableQuestion(row: { kind: string; answerKey: string | null }) {
+  switch (row.kind) {
+    case "true-false":
+      return row.answerKey === "T" || row.answerKey === "F";
+    case "mcq":
+    case "matching":
+    case "short-answer":
+      return true;
+    default:
+      return false;
+  }
+}
+
 function toReadingQuestion(row: ReadingQuestionRecord): ReadingQuestion | null {
+  if (!isRenderableQuestion(row)) return null;
+
   const base = {
     id: row.id,
     number: row.number,
@@ -149,9 +168,40 @@ function toReadingUnit(row: ReadingUnitRecord): ReadingUnit {
   };
 }
 
-export const getReadingUnits = cache(async (): Promise<ReadingUnit[]> => {
-  const rows = await findReadingUnits();
-  return rows.map(toReadingUnit);
+/**
+ * Danh sách unit cho trang /reading: chỉ lấy metadata và loại câu hỏi, không
+ * tải bài đọc, lựa chọn, matching hay từ vựng của từng unit.
+ */
+export const getReadingUnitSummaries = cache(async (): Promise<ReadingUnitSummary[]> => {
+  const rows = await prisma.readingUnit.findMany({
+    orderBy: [{ level: { order: "asc" } }, { unitNumber: "asc" }],
+    select: {
+      slug: true,
+      unitNumber: true,
+      title: true,
+      description: true,
+      lengthWords: true,
+      estimatedMinutes: true,
+      questionTypes: true,
+      level: { select: { code: true } },
+      groups: { select: { questions: { select: { kind: true, answerKey: true } } } },
+    },
+  });
+
+  return rows.map((row) => ({
+    level: row.level.code as LevelCode,
+    slug: row.slug,
+    unitNumber: row.unitNumber,
+    title: row.title,
+    description: row.description,
+    lengthWords: row.lengthWords,
+    estimatedMinutes: row.estimatedMinutes,
+    questionTypes: row.questionTypes,
+    questionCount: row.groups.reduce(
+      (sum, group) => sum + group.questions.filter(isRenderableQuestion).length,
+      0,
+    ),
+  }));
 });
 
 export const getReadingUnit = cache(

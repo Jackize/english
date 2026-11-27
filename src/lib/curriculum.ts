@@ -1,4 +1,14 @@
-export type LevelCode = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+export const LEVEL_CODES = ["A1", "A2", "B1", "B2", "C1", "C2"] as const;
+
+export type LevelCode = (typeof LEVEL_CODES)[number];
+
+export function isLevelCode(value: unknown): value is LevelCode {
+  return typeof value === "string" && (LEVEL_CODES as readonly string[]).includes(value);
+}
+
+export function toLevelCode(value: string | null | undefined): LevelCode | null {
+  return isLevelCode(value) ? value : null;
+}
 
 /**
  * Màu cấp độ là mã hoá dữ liệu, không phải màu trang trí: mỗi bậc CEFR giữ một
@@ -66,5 +76,5 @@ export const TRACK_META = {
 export type TrackKey = keyof typeof TRACK_META;
 
 export function levelSortValue(code: string) {
-  return ["A1", "A2", "B1", "B2", "C1", "C2"].indexOf(code);
+  return (LEVEL_CODES as readonly string[]).indexOf(code);
 }

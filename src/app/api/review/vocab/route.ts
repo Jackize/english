@@ -1,29 +1,22 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { z } from "zod";
+import { readJson, requireUser, toErrorResponse } from "@/lib/http";
 import { answerVocabularyReview } from "@/lib/vocab-review";
 
+const schema = z.object({
+  itemId: z.string().min(1),
+  answer: z.string().optional(),
+});
+
 export async function POST(request: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const guard = await requireUser();
+  if (!guard.ok) return guard.response;
 
   try {
-    const body = (await request.json()) as { itemId?: string; answer?: string };
-    if (!body.itemId) {
-      return NextResponse.json({ error: "Missing itemId" }, { status: 400 });
-    }
-
-    const result = await answerVocabularyReview(
-      session.user.id,
-      body.itemId,
-      body.answer ?? "",
-    );
+    const body = await readJson(request, schema, "Missing itemId");
+    const result = await answerVocabularyReview(guard.value.id, body.itemId, body.answer ?? "");
     return NextResponse.json(result);
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Vocabulary review failed" },
-      { status: 400 },
-    );
+    return toErrorResponse(error, "Vocabulary review failed");
   }
 }

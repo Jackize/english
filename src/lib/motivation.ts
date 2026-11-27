@@ -1,7 +1,9 @@
 import { cache } from "react";
+import { addDays, dayKey, startOfDay, startOfToday } from "./dates";
+import { getUserLearningState } from "./learning";
 import { prisma } from "./prisma";
 import { liveStreak } from "./streak";
-import type { VocabReviewLevel } from "./vocab-review";
+import { countByLevel, type VocabReviewLevel } from "./vocab-review";
 
 export const RHYTHM_DAYS = 14;
 
@@ -37,19 +39,6 @@ export interface HomeMotivation {
   mistakesFixed: number;
 }
 
-function startOfDay(date: Date) {
-  const value = new Date(date);
-  value.setHours(0, 0, 0, 0);
-  return value;
-}
-
-function dayKey(date: Date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
 /**
  * Số liệu động lực cho trang chủ, chỉ lấy từ dữ liệu thật: chuỗi ngày, các ngày
  * có hoạt động trong 14 ngày gần nhất, mục ôn đến hạn, phân bố hộp Leitner và
@@ -60,14 +49,12 @@ function dayKey(date: Date) {
  * ở xa trong quá khứ có thể bị thiếu; con số không bao giờ bị thổi phồng.
  */
 export const getHomeMotivation = cache(async (userId: string): Promise<HomeMotivation> => {
-  const today = startOfDay(new Date());
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const windowStart = new Date(today);
-  windowStart.setDate(windowStart.getDate() - (RHYTHM_DAYS - 1));
+  const today = startOfToday();
+  const tomorrow = addDays(today, 1);
+  const windowStart = addDays(today, -(RHYTHM_DAYS - 1));
 
   const [
-    user,
+    state,
     lessonDays,
     attemptDays,
     vocabReviewDays,
@@ -79,10 +66,8 @@ export const getHomeMotivation = cache(async (userId: string): Promise<HomeMotiv
     nextQuestion,
     mistakesFixed,
   ] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: userId },
-      select: { streak: true, lastStudyDate: true },
-    }),
+    // Đã cache theo request (trang chủ cũng gọi getOverview), không query lại.
+    getUserLearningState(userId),
     prisma.lessonProgress.findMany({
       where: { userId, completedAt: { gte: windowStart } },
       select: { completedAt: true },
@@ -130,18 +115,17 @@ export const getHomeMotivation = cache(async (userId: string): Promise<HomeMotiv
     if (stamp) activeKeys.add(dayKey(stamp));
   }
 
+  const user = state.user;
   const lastStudy = user?.lastStudyDate ? startOfDay(user.lastStudyDate) : null;
   const studiedToday = lastStudy?.getTime() === today.getTime();
   if (studiedToday) activeKeys.add(dayKey(today));
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterday = addDays(today, -1);
   const studiedYesterday = lastStudy?.getTime() === yesterday.getTime();
   const streakDays = liveStreak(user?.streak ?? 0, user?.lastStudyDate);
 
   const rhythm: RhythmDay[] = [];
   for (let i = 0; i < RHYTHM_DAYS; i++) {
-    const date = new Date(windowStart);
-    date.setDate(windowStart.getDate() + i);
+    const date = addDays(windowStart, i);
     const key = dayKey(date);
     rhythm.push({
       key,
@@ -155,13 +139,7 @@ export const getHomeMotivation = cache(async (userId: string): Promise<HomeMotiv
     vocabReviewDays.filter((row) => row.lastReviewedAt && row.lastReviewedAt >= today).length +
     questionReviewDays.filter((row) => row.lastReviewedAt && row.lastReviewedAt >= today).length;
 
-  const counts: Record<VocabReviewLevel, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-  let total = 0;
-  for (const row of vocabGrouped) {
-    const level = Math.min(5, Math.max(1, Math.round(row.level))) as VocabReviewLevel;
-    counts[level] += row._count._all;
-    total += row._count._all;
-  }
+  const { counts, total } = countByLevel(vocabGrouped);
 
   const nextCandidates = [nextVocab?.dueAt, nextQuestion?.dueAt].filter(
     (value): value is Date => Boolean(value),

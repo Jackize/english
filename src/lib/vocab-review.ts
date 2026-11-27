@@ -1,4 +1,6 @@
-import { prisma } from "./prisma";
+import { addDays, endOfToday } from "./dates";
+import { NotFoundError } from "./errors";
+import { prisma, type Db } from "./prisma";
 import { touchStreak } from "./streak";
 import type { WrittenDirection } from "./vocabulary-quiz";
 
@@ -62,7 +64,7 @@ export interface VocabReviewStats {
   nextDueAt: string | null;
 }
 
-function clampLevel(value: number): VocabReviewLevel {
+export function clampLevel(value: number): VocabReviewLevel {
   if (value <= 1) return 1;
   if (value >= 5) return 5;
   return Math.round(value) as VocabReviewLevel;
@@ -135,17 +137,15 @@ export function vocabularyAnswerExplanation({
   return `${word}${ipa ? ` ${ipa}` : ""} — ${meaningVi}.${example ? ` Ví dụ: ${example}` : ""}`;
 }
 
-function endOfToday() {
-  const value = new Date();
-  value.setHours(0, 0, 0, 0);
-  value.setDate(value.getDate() + 1);
-  return value;
-}
-
-function addDays(date: Date, days: number) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
+/** Đếm số từ theo từng mức Leitner (dùng chung cho trang ôn tập và trang chủ). */
+export function countByLevel(rows: { level: number; _count: { _all: number } }[]) {
+  const counts: Record<VocabReviewLevel, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  let total = 0;
+  for (const row of rows) {
+    counts[clampLevel(row.level)] += row._count._all;
+    total += row._count._all;
+  }
+  return { counts, total };
 }
 
 /**
@@ -158,10 +158,11 @@ export async function registerVocabularyForLesson(
   lessonId: string,
   // Truyền sẵn khi caller đã có dữ liệu bài học, để khỏi query lại.
   preloaded?: { track: string; vocab: { id: string }[] },
+  db: Db = prisma,
 ) {
   const lesson =
     preloaded ??
-    (await prisma.lesson.findUnique({
+    (await db.lesson.findUnique({
       where: { id: lessonId },
       select: {
         track: true,
@@ -173,17 +174,49 @@ export async function registerVocabularyForLesson(
     return 0;
   }
 
-  const result = await prisma.vocabReviewItem.createMany({
+  const now = new Date();
+  const result = await db.vocabReviewItem.createMany({
     data: lesson.vocab.map((entry) => ({
       userId,
       vocabId: entry.id,
       level: 1,
-      dueAt: new Date(),
+      dueAt: now,
     })),
     skipDuplicates: true,
   });
 
   return result.count;
+}
+
+/**
+ * Từ viết sai trong bài kiểm tra thật quay về mức 1 và đến hạn ôn ngay.
+ * Cập nhật mục đã có rồi tạo mục còn thiếu: 2 câu lệnh thay vì 1 upsert/từ.
+ */
+export async function resetVocabularyToLevelOne(db: Db, userId: string, vocabIds: string[]) {
+  if (vocabIds.length === 0) return;
+  const now = new Date();
+
+  await db.vocabReviewItem.updateMany({
+    where: { userId, vocabId: { in: vocabIds } },
+    data: {
+      level: 1,
+      correctStreak: 0,
+      wrongCount: { increment: 1 },
+      lastReviewedAt: now,
+      dueAt: now,
+    },
+  });
+  await db.vocabReviewItem.createMany({
+    data: vocabIds.map((vocabId) => ({
+      userId,
+      vocabId,
+      level: 1,
+      wrongCount: 1,
+      lastReviewedAt: now,
+      dueAt: now,
+    })),
+    skipDuplicates: true,
+  });
 }
 
 /**
@@ -295,13 +328,7 @@ export async function getVocabularyReview(userId: string) {
     }),
   ]);
 
-  const counts: Record<VocabReviewLevel, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-  let total = 0;
-  for (const row of grouped) {
-    const level = clampLevel(row.level);
-    counts[level] += row._count._all;
-    total += row._count._all;
-  }
+  const { counts, total } = countByLevel(grouped);
 
   const lowestLevel =
     (VOCAB_REVIEW_LEVELS.find((row) => counts[row.level] > 0)?.level as
@@ -375,7 +402,7 @@ export async function answerVocabularyReview(
     },
   });
 
-  if (!item) throw new Error("Vocabulary review item not found");
+  if (!item) throw new NotFoundError("Vocabulary review item not found");
 
   const previousLevel = clampLevel(item.level);
   const direction = directionForLevel();

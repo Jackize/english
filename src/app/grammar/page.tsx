@@ -1,13 +1,11 @@
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { getOverview } from "@/lib/learning";
-import { LEVEL_META, type LevelCode } from "@/lib/curriculum";
+import { LEVEL_CODES, LEVEL_META, type LevelCode } from "@/lib/curriculum";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { LessonRow } from "@/components/learning/LessonRow";
 import { ProgressBar } from "@/components/ui/Progress";
-
-const LEVEL_CODES: LevelCode[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
 
 export default async function GrammarPage({
   searchParams,

@@ -1,6 +1,7 @@
-import { prisma } from "./prisma";
 import { cache } from "react";
-import { getPlantStage, type LevelCode } from "./curriculum";
+import { getPlantStage, toLevelCode, type LevelCode } from "./curriculum";
+import { endOfToday, startOfToday } from "./dates";
+import { prisma } from "./prisma";
 import { liveStreak } from "./streak";
 
 export interface LessonCard {
@@ -76,24 +77,6 @@ export interface Overview {
   plant: ReturnType<typeof getPlantStage> & { remainingXp: number };
 }
 
-function startOfToday() {
-  const value = new Date();
-  value.setHours(0, 0, 0, 0);
-  return value;
-}
-
-function endOfToday() {
-  const value = startOfToday();
-  value.setDate(value.getDate() + 1);
-  return value;
-}
-
-const LEVEL_CODES = new Set<LevelCode>(["A1", "A2", "B1", "B2", "C1", "C2"]);
-
-function toLevelCode(value: string | null | undefined): LevelCode | null {
-  return value && LEVEL_CODES.has(value as LevelCode) ? (value as LevelCode) : null;
-}
-
 type LessonRecord = {
   id: string;
   title: string;
@@ -130,10 +113,16 @@ function toLessonCard(
 }
 
 // ---------------------------------------------------------------------------
-// Curriculum (level/topic/lesson) là dữ liệu tĩnh — cache trong RAM để khỏi
-// round-trip DB (~250ms/lần query tới Supabase) ở mỗi request.
-// TTL 60s để thay đổi seed/migrate vẫn tự cập nhật.
+// Curriculum (level/topic/lesson) là dữ liệu gần như tĩnh — cache trong RAM để
+// khỏi round-trip DB (~250ms/lần query tới Supabase) ở mỗi request.
+// - TTL 60s để thay đổi seed/migrate vẫn tự cập nhật.
+// - Lưu promise (không phải kết quả) để khi cache hết hạn, các request đồng
+//   thời dùng chung một query thay vì cùng bắn query (cache stampede).
+// - Trang admin gọi invalidateCurriculumCache() sau khi sửa bài, nên thay đổi
+//   hiện ra ngay trên instance đó. Nhiều instance thì vẫn trễ tối đa 60s.
 // ---------------------------------------------------------------------------
+const CURRICULUM_TTL_MS = 60_000;
+
 async function fetchCurriculumLevels() {
   return prisma.level.findMany({
     orderBy: { order: "asc" },
@@ -151,15 +140,23 @@ async function fetchCurriculumLevels() {
 
 type CurriculumLevels = Awaited<ReturnType<typeof fetchCurriculumLevels>>;
 
-let curriculumCache: { data: CurriculumLevels; at: number } | null = null;
+let curriculumCache: { promise: Promise<CurriculumLevels>; at: number } | null = null;
 
-async function getCurriculumLevels() {
-  if (curriculumCache && Date.now() - curriculumCache.at < 60_000) {
-    return curriculumCache.data;
+function getCurriculumLevels(): Promise<CurriculumLevels> {
+  if (curriculumCache && Date.now() - curriculumCache.at < CURRICULUM_TTL_MS) {
+    return curriculumCache.promise;
   }
-  const data = await fetchCurriculumLevels();
-  curriculumCache = { data, at: Date.now() };
-  return data;
+  const entry = { promise: fetchCurriculumLevels(), at: Date.now() };
+  curriculumCache = entry;
+  // Query lỗi thì bỏ cache để request sau thử lại, không giữ lỗi suốt 60s.
+  entry.promise.catch(() => {
+    if (curriculumCache === entry) curriculumCache = null;
+  });
+  return entry.promise;
+}
+
+export function invalidateCurriculumCache() {
+  curriculumCache = null;
 }
 
 /**
@@ -169,6 +166,7 @@ async function getCurriculumLevels() {
  * song.
  */
 export const getUserLearningState = cache(async (userId: string) => {
+  const dueBefore = endOfToday();
   const [progressRows, user, reviewCountRows] = await Promise.all([
     prisma.lessonProgress.findMany({
       where: { userId },
@@ -199,11 +197,11 @@ export const getUserLearningState = cache(async (userId: string) => {
         (SELECT COUNT(*) FROM "ReviewItem"
           WHERE "userId" = ${userId}
             AND "resolved" = false
-            AND "dueAt" < ${endOfToday()})
+            AND "dueAt" < ${dueBefore})
         +
         (SELECT COUNT(*) FROM "VocabReviewItem"
           WHERE "userId" = ${userId}
-            AND "dueAt" < ${endOfToday()})
+            AND "dueAt" < ${dueBefore})
       )::bigint AS count
     `,
   ]);
@@ -252,8 +250,15 @@ export const getOverview = cache(async (userId?: string, levelCode?: LevelCode):
       else vocabularyLessons.push(card);
     }
 
-    // Map lessonId -> topicId để tránh O(n²) find trong level.lessons.
+    // Gom bài từ vựng theo topic trong một lượt (giữ nguyên thứ tự bài).
     const lessonTopicId = new Map(level.lessons.map((row) => [row.id, row.topicId]));
+    const lessonsByTopic = new Map<string | null, LessonCard[]>();
+    for (const lesson of vocabularyLessons) {
+      const topicId = lessonTopicId.get(lesson.id) || null;
+      const bucket = lessonsByTopic.get(topicId);
+      if (bucket) bucket.push(lesson);
+      else lessonsByTopic.set(topicId, [lesson]);
+    }
 
     const topics: TopicGroup[] = level.topics.map((topic) => ({
       id: topic.id,
@@ -261,24 +266,18 @@ export const getOverview = cache(async (userId?: string, levelCode?: LevelCode):
       slug: topic.slug,
       icon: topic.icon,
       description: topic.description,
-      lessons: vocabularyLessons.filter(
-        (lesson) => lessonTopicId.get(lesson.id) === topic.id,
-      ),
+      lessons: lessonsByTopic.get(topic.id) ?? [],
     }));
 
-    const hasTopicless = vocabularyLessons.some(
-      (lesson) => !lessonTopicId.get(lesson.id),
-    );
-    const topicless: TopicGroup | null = hasTopicless
+    const topiclessLessons = lessonsByTopic.get(null);
+    const topicless: TopicGroup | null = topiclessLessons
       ? {
           id: `${level.id}-general`,
           name: "Bài học khác",
           slug: "khac",
           icon: "menu_book",
           description: null,
-          lessons: vocabularyLessons.filter(
-            (lesson) => !lessonTopicId.get(lesson.id),
-          ),
+          lessons: topiclessLessons,
         }
       : null;
 

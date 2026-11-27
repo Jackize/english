@@ -1,4 +1,4 @@
-import { PrismaClient } from "@/generated/prisma/client";
+import { PrismaClient, type Prisma } from "@/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
@@ -60,3 +60,14 @@ export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
 }
+
+/** Either the root client or an interactive-transaction client. */
+export type Db = PrismaClient | Prisma.TransactionClient;
+
+/**
+ * Options for interactive transactions. Prisma's default 5s timeout is too
+ * tight when the database is a remote pooler (~250ms per round-trip) and a
+ * use case runs ~10 statements; `maxWait` covers queueing for the single
+ * pooled connection (DB_POOL_MAX=1 by default).
+ */
+export const TX_OPTIONS = { maxWait: 10_000, timeout: 20_000 } as const;

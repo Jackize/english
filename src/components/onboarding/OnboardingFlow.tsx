@@ -2,12 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LEVEL_META, type LevelCode } from "@/lib/curriculum";
+import { LEVEL_CODES, LEVEL_META, type LevelCode } from "@/lib/curriculum";
 import { PLACEMENT_QUESTIONS, scorePlacement } from "@/lib/placement";
 import { ProgressBar } from "@/components/ui/Progress";
 import { useToast } from "@/components/ui/Toast";
 
-const LEVEL_CODES: LevelCode[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
 const LESSON_OPTIONS = [1, 2, 3, 4, 5];
 const MINUTE_OPTIONS = [10, 15, 20, 30, 45, 60];
 

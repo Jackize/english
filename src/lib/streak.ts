@@ -1,10 +1,5 @@
-import { prisma } from "./prisma";
-
-function startOfDay(date: Date) {
-  const value = new Date(date);
-  value.setHours(0, 0, 0, 0);
-  return value;
-}
+import { addDays, calendarDaysBetween, startOfToday } from "./dates";
+import { prisma, type Db } from "./prisma";
 
 /**
  * Chuỗi ngày đang còn hiệu lực. touchStreak chỉ đặt lại chuỗi khi người học quay
@@ -13,36 +8,35 @@ function startOfDay(date: Date) {
  */
 export function liveStreak(streak: number, lastStudyDate: Date | null | undefined) {
   if (!lastStudyDate) return 0;
-  const diffDays = Math.round(
-    (startOfDay(new Date()).getTime() - startOfDay(lastStudyDate).getTime()) / 86_400_000,
-  );
-  return diffDays <= 1 ? streak : 0;
+  return calendarDaysBetween(lastStudyDate, new Date()) <= 1 ? streak : 0;
 }
 
 /**
- * Cập nhật chuỗi ngày học liên tiếp. Hàm này được dùng chung bởi bài học và
- * các lượt ôn tập (câu hỏi + từ vựng).
+ * Cập nhật chuỗi ngày học liên tiếp. Dùng chung cho bài học và các lượt ôn tập.
+ *
+ * Hai câu UPDATE có điều kiện thay cho đọc-rồi-ghi: điều kiện WHERE được
+ * Postgres kiểm tra lại sau khi khoá dòng, nên hai request đồng thời không thể
+ * cộng chuỗi hai lần. Sau câu đầu tiên `lastStudyDate` đã là hôm nay, nên câu
+ * thứ hai không bao giờ khớp cùng lúc với câu đầu.
  */
-export async function touchStreak(userId: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { lastStudyDate: true, streak: true },
+export async function touchStreak(userId: string, db: Db = prisma) {
+  const now = new Date();
+  const today = startOfToday(now);
+  const yesterday = addDays(today, -1);
+
+  // Học hôm qua -> nối chuỗi.
+  const continued = await db.user.updateMany({
+    where: { id: userId, lastStudyDate: { gte: yesterday, lt: today } },
+    data: { streak: { increment: 1 }, lastStudyDate: now },
   });
-  if (!user) return;
+  if (continued.count > 0) return;
 
-  const today = startOfDay(new Date());
-  const last = user.lastStudyDate ? startOfDay(user.lastStudyDate) : null;
-
-  if (last && last.getTime() === today.getTime()) return;
-
-  let streak = 1;
-  if (last) {
-    const diffDays = Math.round((today.getTime() - last.getTime()) / 86_400_000);
-    streak = diffDays === 1 ? user.streak + 1 : 1;
-  }
-
-  await prisma.user.update({
-    where: { id: userId },
-    data: { streak, lastStudyDate: new Date() },
+  // Chưa từng học hoặc đã đứt chuỗi -> bắt đầu lại từ 1.
+  await db.user.updateMany({
+    where: {
+      id: userId,
+      OR: [{ lastStudyDate: null }, { lastStudyDate: { lt: yesterday } }],
+    },
+    data: { streak: 1, lastStudyDate: now },
   });
 }

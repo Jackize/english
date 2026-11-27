@@ -1,5 +1,9 @@
 export type LevelCode = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
 
+/**
+ * Màu cấp độ là mã hoá dữ liệu, không phải màu trang trí: mỗi bậc CEFR giữ một
+ * màu ở mọi nơi để người học nhận ra cấp độ ngay. Xem DESIGN.md, mục Palette.
+ */
 export const LEVEL_META: Record<
   LevelCode,
   { name: string; tagline: string; short: string; color: string; soft: string }

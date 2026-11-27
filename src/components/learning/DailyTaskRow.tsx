@@ -18,12 +18,12 @@ export function DailyTaskRow({ task }: { task: DailyTask }) {
           completed ? "bg-brand text-white" : "bg-brand-soft text-brand"
         }`}
       >
-        <span className="material-symbols-outlined text-[18px]">{icon}</span>
+        <span className="material-symbols-outlined text-[18px]" aria-hidden="true">{icon}</span>
       </span>
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-brand">
+          <span className="text-[11px] font-semibold text-brand">
             {label}
           </span>
           {task.topicName ? (
@@ -34,7 +34,7 @@ export function DailyTaskRow({ task }: { task: DailyTask }) {
               Hoàn thành
             </span>
           ) : started ? (
-            <span className="rounded-full bg-[#fdf3e2] px-2 py-0.5 text-[9px] font-semibold text-gold">
+            <span className="rounded-full bg-[#fdf3e2] px-2 py-0.5 text-[9px] font-semibold text-[#8a5a14]">
               Đang học
             </span>
           ) : null}
@@ -52,7 +52,7 @@ export function DailyTaskRow({ task }: { task: DailyTask }) {
         </div>
       </div>
 
-      <span className="material-symbols-outlined flex-shrink-0 text-[18px] text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-brand">
+      <span className="material-symbols-outlined flex-shrink-0 text-[18px] text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-brand" aria-hidden="true">
         arrow_forward
       </span>
     </Link>

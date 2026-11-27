@@ -127,9 +127,9 @@ export function PlantGrowth({
               Mỗi bài hoàn thành bổ sung XP cho cây. Cây lớn dần theo tiến độ của toàn bộ khoá học.
             </p>
           </div>
-          <div className="text-right">
+          <div className="sm:text-right">
             <div className="display text-4xl text-brand">{percent}%</div>
-            <div className="text-xs uppercase tracking-[0.15em] text-muted">toàn khoá học</div>
+            <div className="text-xs text-muted">toàn khoá học</div>
           </div>
         </div>
 
@@ -140,7 +140,7 @@ export function PlantGrowth({
               <span className="font-semibold text-brand">{next.label}</span>
             </>
           ) : (
-            <>Bạn đã chạm tới chặng cuối — <span className="font-semibold text-brand">Kết trái</span>.</>
+            <>Bạn đã chạm tới chặng cuối: <span className="font-semibold text-brand">Kết trái</span>.</>
           )}
         </div>
 

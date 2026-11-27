@@ -1,6 +1,7 @@
 import { prisma } from "./prisma";
 import { cache } from "react";
 import { getPlantStage, type LevelCode } from "./curriculum";
+import { liveStreak } from "./streak";
 
 export interface LessonCard {
   id: string;
@@ -185,6 +186,7 @@ export const getUserLearningState = cache(async (userId: string) => {
       select: {
         xp: true,
         streak: true,
+        lastStudyDate: true,
         dailyGoalLessons: true,
         dailyGoalMinutes: true,
         onboardedAt: true,
@@ -379,7 +381,7 @@ export const getOverview = cache(async (userId?: string, levelCode?: LevelCode):
     completedLessons,
     percent,
     xp: user?.xp ?? 0,
-    streak: user?.streak ?? 0,
+    streak: liveStreak(user?.streak ?? 0, user?.lastStudyDate),
     reviewCount,
     dailyGoal: {
       targetLessons,
@@ -406,7 +408,7 @@ export const getOverview = cache(async (userId?: string, levelCode?: LevelCode):
 export const getHeaderStats = cache(async (userId?: string) => {
   if (!userId) return null;
   const state = await getUserLearningState(userId);
-  return state.user ? { streak: state.user.streak, xp: state.user.xp } : null;
+  return state.user ? { streak: liveStreak(state.user.streak, state.user.lastStudyDate), xp: state.user.xp } : null;
 });
 
 export const getContinueLesson = cache(async (userId?: string) => {

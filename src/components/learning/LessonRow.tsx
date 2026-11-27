@@ -88,7 +88,7 @@ export function LessonRow({
       <div className="hidden w-28 flex-shrink-0 sm:block">
         <ProgressBar value={lesson.quizTotal ? (lesson.bestScore / lesson.quizTotal) * 100 : 0} />
         <div className="mt-1.5 text-right text-[10px] text-muted">
-          {lesson.quizTotal ? `${Math.round((lesson.bestScore / lesson.quizTotal) * 100)}%` : "—"}
+          {lesson.quizTotal ? `${Math.round((lesson.bestScore / lesson.quizTotal) * 100)}%` : "Chưa kiểm tra"}
         </div>
       </div>
 

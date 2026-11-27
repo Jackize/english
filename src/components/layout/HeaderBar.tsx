@@ -75,6 +75,7 @@ export function HeaderBar({ active, user, continueLesson }: HeaderBarProps) {
                   >
                     {group.label}
                     <span
+                      aria-hidden="true"
                       className={`material-symbols-outlined text-[17px] transition-transform ${
                         skillsOpen ? "rotate-180" : ""
                       }`}
@@ -112,23 +113,15 @@ export function HeaderBar({ active, user, continueLesson }: HeaderBarProps) {
         </div>
 
         <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
-          {continueLesson ? (
-            <Link
-              href={`/lesson/${continueLesson.id}`}
-              className="btn-primary hidden min-w-0 max-w-[280px] items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark xl:inline-flex"
-            >
-              <span className="min-w-0 truncate">Tiếp tục học: {continueLesson.title}</span>
-              <span className="material-symbols-outlined shrink-0 text-[18px]">arrow_forward</span>
-            </Link>
-          ) : null}
-
           {user ? (
             <div className="flex shrink-0 items-center gap-3">
               <span
                 className="hidden items-center gap-1 rounded-full border border-[#f0d9b5] bg-[#fdf3e2] px-2.5 py-1.5 text-xs font-semibold text-gold sm:inline-flex"
                 title={`Chuỗi học ${user.streak} ngày`}
               >
-                <span className="material-symbols-outlined text-[16px]">local_fire_department</span>
+                <span className="material-symbols-outlined text-[16px]">
+                  local_fire_department
+                </span>
                 {user.streak}
               </span>
 
@@ -138,7 +131,9 @@ export function HeaderBar({ active, user, continueLesson }: HeaderBarProps) {
                 title="Cài đặt học tập"
                 className="hidden h-9 w-9 items-center justify-center rounded-full border border-line bg-surface text-muted transition-colors hover:border-brand/30 hover:text-brand sm:flex"
               >
-                <span className="material-symbols-outlined text-[18px]">settings</span>
+                <span className="material-symbols-outlined text-[18px]">
+                  settings
+                </span>
               </Link>
 
               {isAdmin ? (
@@ -180,9 +175,9 @@ export function HeaderBar({ active, user, continueLesson }: HeaderBarProps) {
             aria-label={mobileOpen ? "Đóng menu" : "Mở menu"}
             aria-expanded={mobileOpen}
             onClick={() => setMobileOpen((open) => !open)}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-line text-ink lg:hidden"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-line text-ink lg:hidden"
           >
-            <span className="material-symbols-outlined text-[20px]">
+            <span className="material-symbols-outlined text-[20px]" aria-hidden="true">
               {mobileOpen ? "close" : "menu"}
             </span>
           </button>
@@ -195,8 +190,12 @@ export function HeaderBar({ active, user, continueLesson }: HeaderBarProps) {
             href={`/lesson/${continueLesson.id}`}
             className="flex items-center justify-between gap-2 rounded-full bg-brand px-4 py-2 text-xs font-semibold text-white"
           >
-            <span className="truncate">Tiếp tục học: {continueLesson.title}</span>
-            <span className="material-symbols-outlined shrink-0 text-[16px]">arrow_forward</span>
+            <span className="truncate">
+              Tiếp tục học: {continueLesson.title}
+            </span>
+            <span className="material-symbols-outlined shrink-0 text-[16px]">
+              arrow_forward
+            </span>
           </Link>
         </div>
       ) : null}

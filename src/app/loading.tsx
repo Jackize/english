@@ -1,42 +1,61 @@
 import { LoadingShell } from "@/components/loading/LoadingShell";
 import { Skeleton } from "@/components/loading/Skeleton";
 
+/**
+ * Khung chờ có cùng bố cục với trang chủ khi đã đăng nhập (lời chào + nút tiếp
+ * tục, rồi lưới kế hoạch/tiến độ và ôn tập/nhịp học), nên trang không bị nhảy
+ * khi dữ liệu về. Khách chỉ thấy khung này trong chốc lát.
+ */
 export default function Loading() {
+  const container = "mx-auto w-full max-w-[1120px] px-5 md:px-8";
+
   return (
     <LoadingShell>
-      <section className="mx-auto w-full max-w-[1120px] px-5 pb-10 pt-16 text-center md:px-8 md:pt-20">
-        <Skeleton className="mx-auto mb-6 h-7 w-44 rounded-full" />
-        <Skeleton className="mx-auto h-12 w-full max-w-3xl" />
-        <Skeleton className="mx-auto mt-6 h-4 w-full max-w-2xl" />
-        <div className="mt-8 flex justify-center gap-3">
-          <Skeleton className="h-12 w-40 rounded-full" />
-          <Skeleton className="h-12 w-36 rounded-full" />
-          <Skeleton className="h-12 w-36 rounded-full" />
+      <p role="status" className="sr-only">
+        Đang tải tiến độ học của bạn
+      </p>
+
+      {/* Lời chào */}
+      <section className={`${container} pt-10 md:pt-14`}>
+        <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+          <div className="w-full max-w-xl">
+            <Skeleton className="h-10 w-4/5 md:h-12" />
+            <Skeleton className="mt-4 h-4 w-full" />
+          </div>
+          <Skeleton className="h-12 w-60 rounded-full" />
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-[1120px] px-5 pb-6 md:px-8">
-        <div className="card overflow-hidden border-brand/20 bg-brand-soft/20 p-6">
-          <Skeleton className="h-6 w-48" />
-          <Skeleton className="mt-3 h-4 w-full max-w-md" />
-          <div className="mt-5 grid gap-2 sm:grid-cols-2">
-            <Skeleton className="h-16 rounded-xl" />
-            <Skeleton className="h-16 rounded-xl" />
+      {/* Kế hoạch hôm nay + tiến độ */}
+      <section className={`${container} mt-8 grid gap-5 lg:grid-cols-[1.45fr_1fr]`}>
+        <div className="card-elevated p-5 md:p-6">
+          <Skeleton className="h-3 w-40" />
+          <Skeleton className="mt-3 h-7 w-56" />
+          <div className="mt-6 grid gap-2.5 sm:grid-cols-2">
+            <Skeleton className="h-[72px] rounded-xl" />
+            <Skeleton className="h-[72px] rounded-xl" />
           </div>
         </div>
-      </section>
-
-      <section className="mx-auto mt-16 w-full max-w-[1120px] px-5 md:px-8">
-        <div className="card p-6 md:p-10">
-          <Skeleton className="h-40 w-full" />
+        <div className="card p-5 md:p-6">
+          <Skeleton className="h-7 w-48" />
+          <Skeleton className="mt-3 h-3 w-full" />
+          <Skeleton className="mt-8 h-1.5 w-full rounded-full" />
         </div>
       </section>
 
-      <section className="mx-auto mt-16 w-full max-w-[1120px] px-5 md:px-8">
-        <Skeleton className="mb-6 h-8 w-64" />
-        <div className="grid gap-4 md:grid-cols-2">
-          <Skeleton className="h-48 rounded-2xl" />
-          <Skeleton className="h-48 rounded-2xl" />
+      {/* Ôn tập + nhịp học */}
+      <section className={`${container} mt-5 grid gap-5 lg:grid-cols-[1.45fr_1fr]`}>
+        <div className="card-elevated p-5 md:p-6">
+          <Skeleton className="h-7 w-64" />
+          <Skeleton className="mt-3 h-3 w-full max-w-md" />
+        </div>
+        <div className="card p-5 md:p-6">
+          <Skeleton className="h-7 w-52" />
+          <div className="mt-6 grid grid-cols-7 gap-1.5">
+            {Array.from({ length: 14 }).map((_, index) => (
+              <Skeleton key={index} className="h-6 rounded-md" />
+            ))}
+          </div>
         </div>
       </section>
     </LoadingShell>

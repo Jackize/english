@@ -25,9 +25,8 @@ export function LoadingShell({
             </nav>
           </div>
           <div className="flex items-center gap-3">
-            <span className="rounded-full bg-brand px-5 py-2 text-sm font-semibold text-white opacity-80">
-              Đăng nhập
-            </span>
+            {/* Chưa biết người dùng đã đăng nhập hay chưa: giữ chỗ trung tính thay vì nút "Đăng nhập". */}
+            <span className="h-9 w-28 animate-pulse rounded-full bg-surface-muted" aria-hidden="true" />
             <span className="h-9 w-9 rounded-full border border-line lg:hidden" />
           </div>
         </div>

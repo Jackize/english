@@ -17,7 +17,7 @@ export function DailyGoalCard({
     <div className={`card p-5 md:p-6 ${className}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand">
+          <div className="text-xs font-semibold text-brand">
             Tiến độ hôm nay
           </div>
           <h3 className="display mt-1 text-2xl text-ink">
@@ -32,11 +32,11 @@ export function DailyGoalCard({
 
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-[#f0d9b5] bg-[#fdf3e2] px-3 py-1.5 text-xs font-semibold text-gold">
-            <span className="material-symbols-outlined text-[16px]">local_fire_department</span>
+            <span className="material-symbols-outlined text-[16px]" aria-hidden="true">local_fire_department</span>
             {streak} ngày
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-muted">
-            <span className="material-symbols-outlined text-[16px] text-brand">bolt</span>
+            <span className="material-symbols-outlined text-[16px] text-brand" aria-hidden="true">bolt</span>
             {xp} XP
           </span>
         </div>
@@ -55,13 +55,13 @@ export function DailyGoalCard({
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted">
           <span>
             {goal.done
-              ? "Mục tiêu đã đạt — nghỉ ngơi hoặc ôn thêm đều tốt."
+              ? "Mục tiêu đã đạt. Nghỉ ngơi hoặc ôn thêm đều tốt."
               : goal.completedLessons < goal.targetLessons
                 ? `Còn ${goal.targetLessons - goal.completedLessons} bài để chạm mục tiêu.`
                 : `Còn ${Math.max(0, goal.targetMinutes - goal.completedMinutes)} phút để chạm mục tiêu.`}
           </span>
           <Link href="/daily" className="font-semibold text-brand hover:underline">
-            Xem kế hoạch hôm nay →
+            Xem kế hoạch hôm nay
           </Link>
         </div>
       </div>

@@ -103,6 +103,19 @@ export interface ReadingUnit {
   source: string;
 }
 
+/** Dữ liệu tối thiểu cho trang danh sách unit (không kèm bài đọc, câu hỏi). */
+export type ReadingUnitSummary = Pick<
+  ReadingUnit,
+  | "level"
+  | "slug"
+  | "unitNumber"
+  | "title"
+  | "description"
+  | "lengthWords"
+  | "estimatedMinutes"
+  | "questionTypes"
+> & { questionCount: number };
+
 export function getReadingQuestions(unit: ReadingUnit): ReadingQuestion[] {
   return unit.groups.flatMap((group) => group.questions);
 }

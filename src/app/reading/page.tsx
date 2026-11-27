@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { LEVEL_META, type LevelCode } from "@/lib/curriculum";
-import { getReadingUnits } from "@/lib/reading";
-import { getReadingQuestionCount, type ReadingUnit } from "@/lib/reading-types";
+import { LEVEL_CODES, LEVEL_META, isLevelCode, type LevelCode } from "@/lib/curriculum";
+import { getReadingUnitSummaries } from "@/lib/reading";
+import type { ReadingUnitSummary } from "@/lib/reading-types";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 
@@ -11,8 +11,6 @@ export const metadata: Metadata = {
   description:
     "Luyện đọc hiểu theo từng unit: bài ngắn, câu hỏi tương tác, đáp án có câu chứng minh và từ vựng kèm IPA.",
 };
-
-const LEVEL_CODES: LevelCode[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
 
 const LEVEL_NOTES: Record<LevelCode, string> = {
   A1: "Câu ngắn, chủ đề quen thuộc; làm quen True/False, trắc nghiệm, matching và trả lời ngắn.",
@@ -23,12 +21,12 @@ const LEVEL_NOTES: Record<LevelCode, string> = {
   C2: "Bài học thuật dài, xử lý nuance và lập luận phức tạp.",
 };
 
-function unitCountForLevel(units: ReadingUnit[], code: LevelCode) {
+function unitCountForLevel(units: ReadingUnitSummary[], code: LevelCode) {
   return units.filter((unit) => unit.level === code).length;
 }
 
-function ReadingUnitRow({ unit }: { unit: ReadingUnit }) {
-  const questionCount = getReadingQuestionCount(unit);
+function ReadingUnitRow({ unit }: { unit: ReadingUnitSummary }) {
+  const questionCount = unit.questionCount;
 
   return (
     <Link
@@ -78,10 +76,8 @@ export default async function ReadingPage({
   searchParams: Promise<{ level?: string }>;
 }) {
   const params = await searchParams;
-  const units = await getReadingUnits();
-  const selected = LEVEL_CODES.includes(params.level as LevelCode)
-    ? (params.level as LevelCode)
-    : null;
+  const units = await getReadingUnitSummaries();
+  const selected = isLevelCode(params.level) ? params.level : null;
 
   const visibleLevels = selected
     ? [selected]

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { getOverview, type LevelOverview, type LessonCard, type TopicGroup } from "@/lib/learning";
-import { LEVEL_META, type LevelCode } from "@/lib/curriculum";
+import { LEVEL_CODES, LEVEL_META, type LevelCode } from "@/lib/curriculum";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { ProgressBar } from "@/components/ui/Progress";
@@ -26,7 +26,6 @@ export const metadata: Metadata = {
 };
 
 const container = "mx-auto w-full max-w-[1120px] px-5 md:px-8";
-const LEVEL_CODES = ["A1", "A2", "B1", "B2", "C1", "C2"] as const;
 
 export default async function RoadmapPage({
   searchParams,

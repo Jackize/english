@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { LEVEL_META, type LevelCode } from "@/lib/curriculum";
+import { LEVEL_CODES, LEVEL_META, type LevelCode } from "@/lib/curriculum";
 import { getWritingUnits, type WritingUnit } from "@/lib/writing";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
@@ -10,8 +10,6 @@ export const metadata: Metadata = {
   description:
     "Luyện viết tiếng Anh theo từng unit: câu đơn, đoạn văn, IELTS Task 1 & Task 2, ngữ pháp và tự sửa lỗi.",
 };
-
-const LEVEL_CODES: LevelCode[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
 
 const LEVEL_NOTES: Record<LevelCode, string> = {
   A1: "Pre-IELTS: câu đơn, đoạn 30–80 từ, tự sửa lỗi và làm quen mô tả biểu đồ.",

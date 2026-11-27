@@ -184,6 +184,9 @@ export function LessonEditor({
     const cleanSections = sections
       .filter((section) => section.title.trim() && section.body.trim())
       .map((section) => ({
+        // key = id trong DB với dòng có sẵn, giúp server cập nhật đúng dòng thay
+        // vì xoá rồi tạo lại (giữ lịch ôn của người học).
+        id: section.key,
         title: section.title.trim(),
         body: section.body,
         remember: section.remember.trim() || null,
@@ -197,6 +200,7 @@ export function LessonEditor({
     const cleanVocab = vocab
       .filter((word) => word.word.trim() && word.meaningVi.trim())
       .map((word) => ({
+        id: word.key,
         word: word.word.trim(),
         ipa: word.ipa.trim() || null,
         wordForm: word.wordForm.trim() || null,
@@ -213,6 +217,7 @@ export function LessonEditor({
     const cleanQuestions = questions
       .filter((question) => question.prompt.trim())
       .map((question) => ({
+        id: question.key,
         prompt: question.prompt.trim(),
         explanation: question.explanation.trim() || null,
         choices: question.choices
